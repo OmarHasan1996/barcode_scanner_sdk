@@ -23,6 +23,9 @@ class Code128Decoder : Decoder {
         val runs = rowRuns.runs
         val startsBlack = rowRuns.startsBlack
 
+        // CODE 128 Optimization: The "Yes" card barcode is usually centered. 
+        // We look for the start pattern (3-run sequence 103, 104, 105) but we must 
+        // be very careful about the quiet zone.
         for (startIdx in 0 until runs.size - 6) {
             val runColorIsBlack = if (startIdx % 2 == 0) startsBlack else !startsBlack
             if (!runColorIsBlack) continue
@@ -32,15 +35,14 @@ class Code128Decoder : Decoder {
             if (unit < 1.0) continue
 
             // Quiet zone check: at least 10 modules of white space before the start pattern.
-            // If startIdx is 0, we might be at the very edge of the frame, which is risky.
             if (startIdx > 0) {
                 val quietZoneWidth = runs[startIdx - 1]
-                if (quietZoneWidth < 6 * unit) { // Be slightly lenient (standard is 10)
+                // Be very strict for small barcodes, more lenient for large ones.
+                val minQuietZone = if (unit < 2.0) 10 * unit else 6 * unit
+                if (quietZoneWidth < minQuietZone) {
                     continue
                 }
             } else {
-                // If the barcode starts at the very first run, we have no quiet zone to verify.
-                // In many cases, this is just noise at the image edge.
                 continue
             }
 
@@ -115,17 +117,62 @@ class Code128Decoder : Decoder {
             val currentWindow = runs.copyOfRange(idx, idx + 6)
             val currentUnit = currentWindow.sum() / 11.0
 
-            // 1. Check for wild unit drift (max 30% change from average)
-            if (abs(currentUnit - avgUnit) > avgUnit * 0.35) {
-                Log.v("Code128Decoder", "Rejected symbol: unit drift too high ($currentUnit vs avg $avgUnit)")
-                return null
+            // Try matching with both the avgUnit and the current symbol's unit.
+            // We do this BEFORE the drift check to allow a "low-score override".
+            val value = matchSymbol(currentWindow, currentUnit, 1.2)
+                ?: matchSymbol(currentWindow, avgUnit, 1.2)
+            
+            val matchScore = if (value != null) {
+                PatternMatcher.score(currentWindow, PatternTables.CODE128_PATTERNS[value], currentUnit)
+            } else 2.0
+
+            // 1. Check for wild unit drift (max 55% change from average for screen-scans)
+            if (abs(currentUnit - avgUnit) > avgUnit * 0.55) {
+                // If it's a VERY good match (score < 0.2), we accept it despite the drift.
+                // This handles extreme perspective or lens distortion.
+                if (matchScore > 0.2) {
+                    // Before giving up, see if this is actually the STOP pattern (which is 13 units, not 11)
+                    if (idx + 7 <= runs.size) {
+                        val stopWindow = runs.copyOfRange(idx, idx + 7)
+                        val stopUnit = stopWindow.sum() / 13.0
+                        if (PatternMatcher.matches(stopWindow, PatternTables.CODE128_STOP, stopUnit, 0.8) ||
+                            PatternMatcher.matches(stopWindow, PatternTables.CODE128_STOP, avgUnit, 0.8)) {
+                            
+                            // Quiet zone after Stop
+                            if (idx + 7 < runs.size) {
+                                val quietZone = runs[idx + 7]
+                                if (quietZone > 2.0 * stopUnit) {
+                                    return finish(startValue, values)
+                                }
+                            } else {
+                                return finish(startValue, values)
+                            }
+                        }
+                    }
+                    
+                    Log.v("Code128Decoder", "Rejected symbol: unit drift too high ($currentUnit vs avg $avgUnit, score $matchScore)")
+                    return null
+                }
             }
 
             // 2. Parity check: sum of bar-modules MUST be even for Code 128
-            val barModules = (currentWindow[0] + currentWindow[2] + currentWindow[4]) / currentUnit
-            if (barModules.roundToInt() % 2 != 0) {
-                Log.v("Code128Decoder", "Rejected symbol: parity check failed")
-                return null
+            // We use a more lenient check here to account for significant Bar Width Growth on screens.
+            val barModulesCurrent = (currentWindow[0] + currentWindow[2] + currentWindow[4]) / currentUnit
+            val barModulesAvg = (currentWindow[0] + currentWindow[2] + currentWindow[4]) / avgUnit
+            
+            val parityCurrent = barModulesCurrent.roundToInt() % 2 == 0
+            val parityAvg = barModulesAvg.roundToInt() % 2 == 0
+            
+            if (!parityCurrent && !parityAvg) {
+                // If the match score is excellent, ignore parity (noise/blooming usually causes parity fails)
+                if (matchScore > 0.3) {
+                    val distCurrent = abs(barModulesCurrent - barModulesCurrent.roundToInt())
+                    val distAvg = abs(barModulesAvg - barModulesAvg.roundToInt())
+                    if (distCurrent > 0.3 && distAvg > 0.3) {
+                        Log.v("Code128Decoder", "Rejected symbol: parity check failed ($barModulesCurrent, $barModulesAvg, score $matchScore)")
+                        return null
+                    }
+                }
             }
 
             // Check for Stop before assuming another data/checksum symbol follows.
@@ -133,31 +180,26 @@ class Code128Decoder : Decoder {
                 val stopWindow = runs.copyOfRange(idx, idx + 7)
                 val stopUnit = stopWindow.sum() / 13.0
                 
-                // Stop pattern check must be relatively strict to avoid early termination.
-                // We try matching with both currentUnit and avgUnit.
-                if (PatternMatcher.matches(stopWindow, PatternTables.CODE128_STOP, stopUnit, maxScore = 0.8) ||
-                    PatternMatcher.matches(stopWindow, PatternTables.CODE128_STOP, avgUnit, maxScore = 0.8)) {
+                if (PatternMatcher.matches(stopWindow, PatternTables.CODE128_STOP, stopUnit, 0.8) ||
+                    PatternMatcher.matches(stopWindow, PatternTables.CODE128_STOP, avgUnit, 0.8)) {
                     
-                    // Quiet zone after Stop
+                    // Quiet zone after Stop (Standard is 10x)
                     if (idx + 7 < runs.size) {
                         val quietZone = runs[idx + 7]
-                        if (quietZone > 3 * stopUnit) {
+                        if (quietZone > 7 * stopUnit) {
                             return finish(startValue, values)
                         }
                     } else {
+                        // If we are at the very end of the row, we can't verify quiet zone,
+                        // but it's better than returning a partial result.
                         return finish(startValue, values)
                     }
                 }
             }
 
-            // Try matching with both the avgUnit and the current symbol's unit.
-            val value = matchSymbol(currentWindow, currentUnit, 1.2)
-                ?: matchSymbol(currentWindow, avgUnit, 1.2)
-            
             if (value == null) {
                 if (values.size > 0) {
                     Log.v("Code128Decoder", "Symbol match failed at idx=$idx, after ${values.size} symbols. Units: avg=$avgUnit, current=$currentUnit")
-                    Log.v("Code128Decoder", "Raw failing window runs: ${currentWindow.joinToString(",")}")
                 }
                 return null
             }

@@ -56,12 +56,20 @@ class BarcodeAnalyzer(
                 rotationDegrees = imageProxy.imageInfo.rotationDegrees
             )
 
-            // Denser sampling near the middle (where the red line is)
-            val step = (frame.height / rowsPerFrame).toInt().coerceAtLeast(1)
+            // Scan from middle outwards (prioritize the red viewfinder line)
+            val middle = frame.height / 2
+            val step = (frame.height / rowsPerFrame).coerceAtLeast(1)
             
-            for (y in 0 until frame.height step step) {
+            for (i in 0 until rowsPerFrame) {
                 if (hasScanned) return@use
-                if (scanRow(frame, y)) return@use
+                
+                // Zig-zag out from middle: 0, 1, -1, 2, -2...
+                val offset = if (i % 2 == 0) i / 2 else -(i + 1) / 2
+                val y = middle + offset * step
+                
+                if (y in 0 until frame.height) {
+                    if (scanRow(frame, y)) return@use
+                }
             }
         }
     }
@@ -69,21 +77,27 @@ class BarcodeAnalyzer(
     private fun scanRow(frame: LuminanceFrame, y: Int): Boolean {
         val rawRow = frame.getRow(y)
         
-        // 1. High-Density Pass (Upsample + Micro-Blocks)
-        // Best for screens where backlight swallows gaps
-        val upsampled = RowBinarizer.upsample(rawRow)
-        if (checkBinary(RowBinarizer.binarizeHighDensity(upsampled), y, "HD-Up")) return true
+        // 1. Target Screen Glow (Median Filter + Thick Bars + Dilation)
+        val filtered = RowBinarizer.medianFilter(rawRow)
+        if (checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeThick(filtered)), y, "AntiGlow")) return true
         
-        // 2. Standard Screen-Scan
-        val smoothed = RowBinarizer.smooth(rawRow)
-        if (checkBinary(RowBinarizer.binarizeThin(smoothed), y, "ThinGlow")) return true
+        // 2. High-Density Screen Pass
+        val upsampled = RowBinarizer.upsample(filtered)
+        if (checkBinary(RowBinarizer.binarizeHighDensity(upsampled), y, "HD-Up")) return true
+
+        // 3. Screen-Specific Adaptive Pass (NEW)
+        if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "Screen-Spec")) return true
+        
+        // 4. Standard Screen-Scan
+        val smoothed = RowBinarizer.smooth(filtered)
         if (checkBinary(RowBinarizer.binarize(smoothed), y, "Smoothed")) return true
         
-        return false
+        // 5. Adaptive Pass (Best for varied lighting/screens)
+        return checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow)), y, "Adaptive")
     }
 
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {
-        val runs = RunLengthReader.toRuns(binary)
+        val runs = RunLengthReader.toRuns(RowBinarizer.deSpeckle(binary))
         decoder.decode(runs)?.let { result ->
             Log.d("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
             hasScanned = true
