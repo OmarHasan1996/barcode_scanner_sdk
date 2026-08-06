@@ -94,8 +94,14 @@ class BarcodeAnalyzer(
     }
 
     private fun scanRow(rawRow: IntArray, y: Int, orientation: String): Boolean {
-        // 0. High Density Upsampled Passes (2x interpolation)
+        // 0. Specialized High-Density Screen Passes (The "Yes" Card Killer)
+        // These passes use upsampling + aggressive thinning/dilation to find bars in glow.
         val upsampled = RowBinarizer.upsample(rawRow)
+        if (checkBinary(RowBinarizer.close(RowBinarizer.binarizeThin(upsampled)), y, "$orientation-Up-ThinClose")) return true
+        if (checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(upsampled, t = 30)), y, "$orientation-Up-Adap30D")) return true
+        if (checkBinary(RowBinarizer.binarizeThin(RowBinarizer.sharpen(upsampled)), y, "$orientation-Up-SharpenThin")) return true
+
+        // 1. High Density Upsampled Passes
         if (checkBinary(RowBinarizer.binarizeAdaptive(upsampled, t = 25), y, "$orientation-Up-Adap25")) return true
         if (checkBinary(RowBinarizer.binarizeAdaptive(upsampled, t = 15), y, "$orientation-Up-Adap15")) return true
         if (checkBinary(RowBinarizer.erode(RowBinarizer.binarizeAdaptive(upsampled, t = 15)), y, "$orientation-Up-Erode")) return true
@@ -138,9 +144,9 @@ class BarcodeAnalyzer(
     }
 
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {
-        val runs = RunLengthReader.toRuns(RowBinarizer.deSpeckle(binary))
+        val runs = RunLengthReader.toRuns(RowBinarizer.deSpeckle(binary), label)
         decoder.decode(runs)?.let { result ->
-            Log.d("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
+            Log.i("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
             hasScanned = true
             onResult(result.copy(rowY = y))
             return true

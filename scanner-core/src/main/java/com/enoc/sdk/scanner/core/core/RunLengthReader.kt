@@ -3,8 +3,9 @@ package com.enoc.sdk.scanner.core.core
 /**
  * A row reduced to alternating run lengths, e.g. white,black,white,black...
  * [startsBlack] tells you the color of runs[0]; after that colors just alternate.
+ * [label] is a diagnostic tag indicating which binarizer created these runs.
  */
-data class RowRuns(val runs: IntArray, val startsBlack: Boolean)
+data class RowRuns(val runs: IntArray, val startsBlack: Boolean, val label: String = "")
 
 object RunLengthReader {
 
@@ -12,8 +13,8 @@ object RunLengthReader {
      * Converts a binarized row into run lengths. Trims nothing — callers are
      * responsible for locating guard/start patterns within the run list.
      */
-    fun toRuns(row: BooleanArray): RowRuns {
-        if (row.isEmpty()) return RowRuns(IntArray(0), false)
+    fun toRuns(row: BooleanArray, label: String = ""): RowRuns {
+        if (row.isEmpty()) return RowRuns(IntArray(0), false, label)
 
         val runs = ArrayList<Int>()
         var current = row[0]
@@ -28,6 +29,6 @@ object RunLengthReader {
             }
         }
         runs.add(count)
-        return RowRuns(runs.toIntArray(), row[0])
+        return RowRuns(runs.toIntArray(), row[0], label)
     }
 }
