@@ -20,6 +20,21 @@ import kotlin.math.roundToInt
 class Code128Decoder : Decoder {
 
     override fun decode(rowRuns: RowRuns): BarcodeResult? {
+        val result = decodeInternal(rowRuns)
+        if (result != null) return result
+        
+        // Code 128 is NOT symmetric. If we are scanning a row from right-to-left
+        // (which happens in vertical or diagonal passes depending on orientation),
+        // we must manually reverse the runs and try again.
+        val reversedRuns = rowRuns.runs.reversedArray()
+        // Note: if the original row started with Black, the reversed row 
+        // starts with whatever the LAST run's color was.
+        val lastRunWasBlack = if (rowRuns.runs.size % 2 == 1) rowRuns.startsBlack else !rowRuns.startsBlack
+        
+        return decodeInternal(RowRuns(reversedRuns, lastRunWasBlack))
+    }
+
+    private fun decodeInternal(rowRuns: RowRuns): BarcodeResult? {
         val runs = rowRuns.runs
         val startsBlack = rowRuns.startsBlack
 
@@ -258,7 +273,10 @@ class Code128Decoder : Decoder {
                 in 64..95 -> sb.append((value - 64).toChar()) // control chars
                 else -> { /* function codes handled by caller */ }
             }
-            'C' -> if (value in 0..99) sb.append(value.toString().padStart(2, '0'))
+            'C' -> if (value in 0..99) {
+                val s = value.toString()
+                sb.append(if (s.length == 1) "0$s" else s)
+            }
         }
     }
 }

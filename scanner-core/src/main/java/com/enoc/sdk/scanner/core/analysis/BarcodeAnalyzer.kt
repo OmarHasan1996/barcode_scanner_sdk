@@ -68,32 +68,49 @@ class BarcodeAnalyzer(
                 val y = middle + offset * step
                 
                 if (y in 0 until frame.height) {
-                    if (scanRow(frame, y)) return@use
+                    if (scanRow(frame.getRow(y), y, "H")) return@use
                 }
+            }
+
+            // 2. Vertical Pass (for 90-degree rotated barcodes)
+            val colsToScan = 30 
+            val colStep = (frame.width / colsToScan).coerceAtLeast(1)
+            val colMiddle = frame.width / 2
+            for (i in 0 until colsToScan) {
+                if (hasScanned) return@use
+                val offset = if (i % 2 == 0) i / 2 else -(i + 1) / 2
+                val x = colMiddle + offset * colStep
+                if (x in 0 until frame.width) {
+                    if (scanRow(frame.getColumn(x), x, "V")) return@use
+                }
+            }
+
+            // 3. Diagonal Pass (for 45-degree rotated barcodes)
+            if (!hasScanned) {
+                if (scanRow(frame.getDiagonal(1.0f), 0, "D1")) return@use
+                if (scanRow(frame.getDiagonal(-1.0f), 0, "D2")) return@use
             }
         }
     }
 
-    private fun scanRow(frame: LuminanceFrame, y: Int): Boolean {
-        val rawRow = frame.getRow(y)
-        
+    private fun scanRow(rawRow: IntArray, y: Int, orientation: String): Boolean {
         // 1. Target Screen Glow (Median Filter + Thick Bars + Dilation)
         val filtered = RowBinarizer.medianFilter(rawRow)
-        if (checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeThick(filtered)), y, "AntiGlow")) return true
+        if (checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeThick(filtered)), y, "$orientation-AntiGlow")) return true
         
         // 2. High-Density Screen Pass
         val upsampled = RowBinarizer.upsample(filtered)
-        if (checkBinary(RowBinarizer.binarizeHighDensity(upsampled), y, "HD-Up")) return true
+        if (checkBinary(RowBinarizer.binarizeHighDensity(upsampled), y, "$orientation-HD-Up")) return true
 
         // 3. Screen-Specific Adaptive Pass (NEW)
-        if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "Screen-Spec")) return true
+        if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "$orientation-Screen-Spec")) return true
         
         // 4. Standard Screen-Scan
         val smoothed = RowBinarizer.smooth(filtered)
-        if (checkBinary(RowBinarizer.binarize(smoothed), y, "Smoothed")) return true
+        if (checkBinary(RowBinarizer.binarize(smoothed), y, "$orientation-Smoothed")) return true
         
         // 5. Adaptive Pass (Best for varied lighting/screens)
-        return checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow)), y, "Adaptive")
+        return checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow)), y, "$orientation-Adaptive")
     }
 
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {

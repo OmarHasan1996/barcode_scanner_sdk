@@ -63,4 +63,57 @@ class LuminanceFrame(
         }
         return out
     }
+
+    /** Returns one vertical column (length == [height]) in upright coordinates. */
+    fun getColumn(x: Int): IntArray {
+        val out = IntArray(height)
+        for (y in 0 until height) {
+            // This is inefficient but clear; a better way is to inline the coordinate math
+            val pixel = when (rotationDegrees) {
+                0 -> yBytes[y * rowStride + x * pixelStride].toInt() and 0xFF
+                180 -> {
+                    val sy = srcHeight - 1 - y
+                    val sx = srcWidth - 1 - x
+                    yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+                }
+                90 -> {
+                    val sx = y
+                    val sy = srcHeight - 1 - x
+                    yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+                }
+                270 -> {
+                    val sx = srcWidth - 1 - y
+                    val sy = x
+                    yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+                }
+                else -> 0
+            }
+            out[y] = pixel
+        }
+        return out
+    }
+
+    /** 
+     * Returns a diagonal row from top-left-ish to bottom-right-ish or vice versa.
+     * [slope] 1.0 = 45 degrees, -1.0 = -45 degrees.
+     */
+    fun getDiagonal(slope: Float): IntArray {
+        // Simplified: just scan the main diagonal for now to see if it helps
+        val length = minOf(width, height)
+        val out = IntArray(length)
+        for (i in 0 until length) {
+            val x = i
+            val y = if (slope > 0) i else height - 1 - i
+            
+            // upright(x, y) coordinate mapping:
+            out[i] = when (rotationDegrees) {
+                0 -> yBytes[y * rowStride + x * pixelStride].toInt() and 0xFF
+                180 -> yBytes[(srcHeight - 1 - y) * rowStride + (srcWidth - 1 - x) * pixelStride].toInt() and 0xFF
+                90 -> yBytes[(srcHeight - 1 - x) * rowStride + y * pixelStride].toInt() and 0xFF
+                270 -> yBytes[x * rowStride + (srcWidth - 1 - y) * pixelStride].toInt() and 0xFF
+                else -> 0
+            }
+        }
+        return out
+    }
 }
