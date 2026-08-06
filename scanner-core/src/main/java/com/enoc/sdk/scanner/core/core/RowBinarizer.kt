@@ -100,6 +100,37 @@ object RowBinarizer {
         return out
     }
 
+    fun erode(row: BooleanArray): BooleanArray {
+        if (row.size < 3) return row
+        val out = BooleanArray(row.size)
+        for (i in 0 until row.size) {
+            val prev = if (i > 0) row[i - 1] else true
+            val next = if (i < row.size - 1) row[i + 1] else true
+            out[i] = row[i] && prev && next
+        }
+        return out
+    }
+
+    /** Morphological "Closing" (Dilate then Erode). Fills gaps in black bars. */
+    fun close(row: BooleanArray): BooleanArray {
+        return erode(dilate(row))
+    }
+
+    /** Stretches contrast of a row to 0-255 range. */
+    fun stretchContrast(row: IntArray): IntArray {
+        if (row.isEmpty()) return row
+        var minVal = 255; var maxVal = 0
+        for (v in row) { if (v < minVal) minVal = v; if (v > maxVal) maxVal = v }
+        if (maxVal <= minVal) return row
+        
+        val out = IntArray(row.size)
+        val range = (maxVal - minVal).toDouble()
+        for (i in row.indices) {
+            out[i] = (((row[i] - minVal) / range) * 255).toInt()
+        }
+        return out
+    }
+
     /** Smooths the row with a 3-sample moving average. */
     fun smooth(row: IntArray): IntArray {
         if (row.size < 3) return row

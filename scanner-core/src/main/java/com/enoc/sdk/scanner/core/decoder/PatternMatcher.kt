@@ -40,13 +40,45 @@ object PatternMatcher {
         return totalScore
     }
 
+    /**
+     * Edge-to-Edge (T-pattern) scoring. 
+     * More robust than standard scoring for Code 128 as it's independent of Bar Width Growth.
+     * Uses the distance between 4 consecutive edges (t1, t2, t3, t4).
+     */
+    fun scoreT(observed: IntArray, ideal: IntArray, unit: Double): Double {
+        if (observed.size < 6 || ideal.size < 6) return Double.MAX_VALUE
+        
+        val totalObserved = observed.sum().toDouble()
+        val totalIdeal = ideal.sum().toDouble()
+        
+        var totalScore = 0.0
+        // Calculate 4 T-measurements (t1..t4)
+        // t_i = (observed[i] + observed[i+1]) / totalObserved
+        for (i in 0..3) {
+            val observedT = (observed[i] + observed[i + 1]) / totalObserved
+            val idealT = (ideal[i] + ideal[i + 1]) / totalIdeal
+            val diff = observedT - idealT
+            totalScore += (diff * diff)
+        }
+        
+        // Final module sum check (is this symbol roughly the right total width?)
+        val unitScore = abs(totalObserved - totalIdeal * unit) / (totalIdeal * unit + 1.0)
+        
+        return totalScore * 100.0 + unitScore
+    }
+
     fun bestMatchIndex(observed: IntArray, candidates: Array<IntArray>, unit: Double, maxScore: Double = 0.5): Int {
         var bestIdx = -1
         var bestScore = maxScore
         for (i in candidates.indices) {
+            // Mix T-score and standard score for best results
+            val sT = scoreT(observed, candidates[i], unit)
             val s = score(observed, candidates[i], unit)
-            if (s < bestScore) {
-                bestScore = s
+            
+            val combined = if (sT < 0.15) sT * 0.5 + s * 0.5 else s
+            
+            if (combined < bestScore) {
+                bestScore = combined
                 bestIdx = i
             }
         }

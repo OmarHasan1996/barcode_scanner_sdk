@@ -20,7 +20,7 @@ import com.enoc.sdk.scanner.core.model.BarcodeResult
  */
 class BarcodeAnalyzer(
     formats: Set<BarcodeFormat>,
-    private val rowsPerFrame: Int = 100,
+    private val rowsPerFrame: Int = 200,
     private val onResult: (BarcodeResult) -> Unit
 ) : ImageAnalysis.Analyzer {
 
@@ -94,22 +94,26 @@ class BarcodeAnalyzer(
     }
 
     private fun scanRow(rawRow: IntArray, y: Int, orientation: String): Boolean {
-        // 1. Target Screen Glow (Median Filter + Thick Bars + Dilation)
+        // 1. Contrast Stretch Pass (NEW - helps with screen glare)
+        val stretched = RowBinarizer.stretchContrast(rawRow)
+        if (checkBinary(RowBinarizer.binarizeHighDensity(stretched), y, "$orientation-Contrast-HD")) return true
+
+        // 2. Target Screen Glow (Median Filter + Thick Bars + Dilation)
         val filtered = RowBinarizer.medianFilter(rawRow)
-        if (checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeThick(filtered)), y, "$orientation-AntiGlow")) return true
+        if (checkBinary(RowBinarizer.close(RowBinarizer.binarizeThick(filtered)), y, "$orientation-Robust-Close")) return true
         
-        // 2. High-Density Screen Pass
+        // 3. High-Density Screen Pass
         val upsampled = RowBinarizer.upsample(filtered)
         if (checkBinary(RowBinarizer.binarizeHighDensity(upsampled), y, "$orientation-HD-Up")) return true
 
-        // 3. Screen-Specific Adaptive Pass (NEW)
+        // 4. Screen-Specific Adaptive Pass
         if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "$orientation-Screen-Spec")) return true
         
-        // 4. Standard Screen-Scan
+        // 5. Standard Screen-Scan
         val smoothed = RowBinarizer.smooth(filtered)
         if (checkBinary(RowBinarizer.binarize(smoothed), y, "$orientation-Smoothed")) return true
         
-        // 5. Adaptive Pass (Best for varied lighting/screens)
+        // 6. Adaptive Pass
         return checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow)), y, "$orientation-Adaptive")
     }
 
