@@ -88,4 +88,33 @@ object PatternMatcher {
     fun matches(observed: IntArray, ideal: IntArray, unit: Double, maxScore: Double = 0.5): Boolean {
         return score(observed, ideal, unit) < maxScore
     }
+
+    /**
+     * Combines multiple scoring techniques for maximum robustness on screen scans.
+     * Uses T-patterns (edge-to-edge) for drift-independence and
+     * BWR-compensation for noise-independence.
+     */
+    fun scoreHybrid(observed: IntArray, ideal: IntArray, unit: Double): Double {
+        if (observed.size < 6 || ideal.size < 6) return Double.MAX_VALUE
+        
+        // 1. T-Pattern Score (Edge-to-Edge)
+        // Code 128 is highly structured in 2-module-sum pairs.
+        val totalObserved = observed.sum().toDouble()
+        val totalIdeal = ideal.sum().toDouble()
+        
+        var tScore = 0.0
+        for (i in 0..3) {
+            val obsT = (observed[i] + observed[i + 1]) / totalObserved
+            val idlT = (ideal[i] + ideal[i + 1]) / totalIdeal
+            val diff = obsT - idlT
+            tScore += diff * diff
+        }
+        
+        // 2. BWR Score (Standard with compensation)
+        val bwrScore = score(observed, ideal, unit)
+        
+        // 3. Final weighting:
+        // If T-score is excellent, it's very likely a match regardless of BWR noise.
+        return if (tScore < 0.001) tScore * 100.0 else bwrScore
+    }
 }

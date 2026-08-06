@@ -52,8 +52,9 @@ class Code128Decoder : Decoder {
             // Quiet zone check: at least 10 modules of white space before the start pattern.
             if (startIdx > 0) {
                 val quietZoneWidth = runs[startIdx - 1]
-                // Be very strict for small barcodes, more lenient for large ones.
-                val minQuietZone = if (unit < 2.0) 10 * unit else 6 * unit
+                // For large barcodes (high unit), noise can break the quiet zone. 
+                // Be slightly more lenient if the unit is high.
+                val minQuietZone = if (unit < 3.0) 10 * unit else 5 * unit
                 if (quietZoneWidth < minQuietZone) {
                     continue
                 }
@@ -141,11 +142,11 @@ class Code128Decoder : Decoder {
                 PatternMatcher.score(currentWindow, PatternTables.CODE128_PATTERNS[value], currentUnit)
             } else 2.0
 
-            // 1. Check for wild unit drift (max 55% change from average for screen-scans)
-            if (abs(currentUnit - avgUnit) > avgUnit * 0.55) {
-                // If it's a VERY good match (score < 0.2), we accept it despite the drift.
+            // 1. Check for wild unit drift (max 75% change from average for extreme perspective)
+            if (abs(currentUnit - avgUnit) > avgUnit * 0.75) {
+                // If it's a VERY good match (score < 0.25), we accept it despite the drift.
                 // This handles extreme perspective or lens distortion.
-                if (matchScore > 0.2) {
+                if (matchScore > 0.25) {
                     // Before giving up, see if this is actually the STOP pattern (which is 13 units, not 11)
                     if (idx + 7 <= runs.size) {
                         val stopWindow = runs.copyOfRange(idx, idx + 7)

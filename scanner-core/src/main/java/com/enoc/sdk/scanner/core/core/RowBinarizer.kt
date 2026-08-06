@@ -116,6 +116,24 @@ object RowBinarizer {
         return erode(dilate(row))
     }
 
+    /** Morphological "Opening" (Erode then Dilate). Removes speckles. */
+    fun open(row: BooleanArray): BooleanArray {
+        return dilate(erode(row))
+    }
+
+    /** Aggressive sharpening filter to enhance bar edges. */
+    fun sharpen(row: IntArray): IntArray {
+        if (row.size < 3) return row
+        val out = IntArray(row.size)
+        out[0] = row[0]; out[row.size-1] = row[row.size-1]
+        for (i in 1 until row.size - 1) {
+            // Unsharp mask: center * 2 - (prev + next) / 2
+            val sharpened = row[i] * 2 - (row[i - 1] + row[i + 1]) / 2
+            out[i] = sharpened.coerceIn(0, 255)
+        }
+        return out
+    }
+
     /** Stretches contrast of a row to 0-255 range. */
     fun stretchContrast(row: IntArray): IntArray {
         if (row.isEmpty()) return row

@@ -98,7 +98,11 @@ class BarcodeAnalyzer(
         val filtered5 = RowBinarizer.medianFilter5(rawRow)
         if (checkBinary(RowBinarizer.binarizeHighContrast(filtered5), y, "$orientation-HighContrast")) return true
 
-        // 2. Contrast Stretch Pass (helps with screen glare)
+        // 2. NEW Sharpened Screen-Spec Pass
+        val sharpened = RowBinarizer.sharpen(rawRow)
+        if (checkBinary(RowBinarizer.binarizeForScreens(sharpened), y, "$orientation-Sharpen-Spec")) return true
+
+        // 3. Contrast Stretch Pass (helps with screen glare)
         val stretched = RowBinarizer.stretchContrast(rawRow)
         if (checkBinary(RowBinarizer.binarizeHighDensity(stretched), y, "$orientation-Contrast-HD")) return true
 
@@ -117,8 +121,8 @@ class BarcodeAnalyzer(
         val smoothed = RowBinarizer.smooth(filtered)
         if (checkBinary(RowBinarizer.binarize(smoothed), y, "$orientation-Smoothed")) return true
         
-        // 6. Adaptive Pass
-        return checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow)), y, "$orientation-Adaptive")
+        // 7. Adaptive Pass (Best for varied lighting/screens)
+        return checkBinary(RowBinarizer.open(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow))), y, "$orientation-Adaptive-Open")
     }
 
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {

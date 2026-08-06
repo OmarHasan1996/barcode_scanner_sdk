@@ -28,11 +28,23 @@ class LuminanceFrame(
      */
     fun getRow(y: Int): IntArray {
         val out = IntArray(width)
+        // Optimization: Read bytes in native memory order when possible
         when (rotationDegrees) {
             0 -> {
                 val base = y * rowStride
+                if (pixelStride == 1) {
+                    for (x in 0 until width) out[x] = yBytes[base + x].toInt() and 0xFF
+                } else {
+                    for (x in 0 until width) out[x] = yBytes[base + x * pixelStride].toInt() and 0xFF
+                }
+            }
+            90 -> {
+                // upright(x, y) = source(y, srcHeight - 1 - x)
+                val sx = y
+                val base = sx * pixelStride
                 for (x in 0 until width) {
-                    out[x] = yBytes[base + x * pixelStride].toInt() and 0xFF
+                    val sy = srcHeight - 1 - x
+                    out[x] = yBytes[sy * rowStride + base].toInt() and 0xFF
                 }
             }
             180 -> {
@@ -43,20 +55,13 @@ class LuminanceFrame(
                     out[x] = yBytes[base + sx * pixelStride].toInt() and 0xFF
                 }
             }
-            90 -> {
-                // upright(x, y) = source(y, srcHeight - 1 - x)
-                val sx = y
-                for (x in 0 until width) {
-                    val sy = srcHeight - 1 - x
-                    out[x] = yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
-                }
-            }
             270 -> {
                 // upright(x, y) = source(srcWidth - 1 - y, x)
                 val sx = srcWidth - 1 - y
+                val base = sx * pixelStride
                 for (x in 0 until width) {
                     val sy = x
-                    out[x] = yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+                    out[x] = yBytes[sy * rowStride + base].toInt() and 0xFF
                 }
             }
             else -> throw IllegalArgumentException("Unsupported rotation: $rotationDegrees")
