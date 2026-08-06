@@ -172,6 +172,38 @@ object RowBinarizer {
         return dilate(binary)
     }
 
+    /** 
+     * Aggressive binarization specifically for high-glare screens.
+     * Uses an 85% threshold to keep spaces open even when black bars "bloom".
+     */
+    fun binarizeHighContrast(row: IntArray): BooleanArray {
+        if (row.isEmpty()) return BooleanArray(0)
+        var minVal = 255; var maxVal = 0
+        for (v in row) { if (v < minVal) minVal = v; if (v > maxVal) maxVal = v }
+        if (maxVal - minVal < MINIMUM_DYNAMIC_RANGE) return BooleanArray(row.size)
+        
+        val threshold = minVal + (maxVal - minVal) * 0.85
+        val out = BooleanArray(row.size)
+        for (i in row.indices) out[i] = row[i] <= threshold
+        return out
+    }
+
+    /** 5-sample median filter for smoother lines without blurring edges. */
+    fun medianFilter5(row: IntArray): IntArray {
+        if (row.size < 5) return row
+        val out = IntArray(row.size)
+        val window = IntArray(5)
+        for (i in 2 until row.size - 2) {
+            for (j in 0..4) window[j] = row[i - 2 + j]
+            window.sort()
+            out[i] = window[2]
+        }
+        // Pad edges
+        out[0] = row[0]; out[1] = row[1]
+        out[row.size-2] = row[row.size-2]; out[row.size-1] = row[row.size-1]
+        return out
+    }
+
     /** 2x linear upsampling. */
     fun upsample(row: IntArray): IntArray {
         if (row.isEmpty()) return row

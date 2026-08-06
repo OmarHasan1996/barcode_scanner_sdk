@@ -94,11 +94,15 @@ class BarcodeAnalyzer(
     }
 
     private fun scanRow(rawRow: IntArray, y: Int, orientation: String): Boolean {
-        // 1. Contrast Stretch Pass (NEW - helps with screen glare)
+        // 1. NEW High-Contrast Screen Pass (Targeting blooming on OLED/Bright screens)
+        val filtered5 = RowBinarizer.medianFilter5(rawRow)
+        if (checkBinary(RowBinarizer.binarizeHighContrast(filtered5), y, "$orientation-HighContrast")) return true
+
+        // 2. Contrast Stretch Pass (helps with screen glare)
         val stretched = RowBinarizer.stretchContrast(rawRow)
         if (checkBinary(RowBinarizer.binarizeHighDensity(stretched), y, "$orientation-Contrast-HD")) return true
 
-        // 2. Target Screen Glow (Median Filter + Thick Bars + Dilation)
+        // 3. Target Screen Glow (Median Filter + Thick Bars + Dilation)
         val filtered = RowBinarizer.medianFilter(rawRow)
         if (checkBinary(RowBinarizer.close(RowBinarizer.binarizeThick(filtered)), y, "$orientation-Robust-Close")) return true
         
