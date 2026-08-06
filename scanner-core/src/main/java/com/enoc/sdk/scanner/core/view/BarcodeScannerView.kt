@@ -99,8 +99,8 @@ class BarcodeScannerView @JvmOverloads constructor(
                 imageAnalysis
             )
             
-            // Set default zoom and focus to help with barcodes
-            camera.cameraControl.setZoomRatio(1.5f)
+            // Set default zoom to 1.0 for physically large/thick barcodes
+            camera.cameraControl.setZoomRatio(1.0f)
             
             val factory = previewView.meteringPointFactory
             val centerPoint = factory.createPoint(0.5f, 0.5f)
