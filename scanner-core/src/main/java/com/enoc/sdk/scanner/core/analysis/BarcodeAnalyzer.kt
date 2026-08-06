@@ -94,35 +94,47 @@ class BarcodeAnalyzer(
     }
 
     private fun scanRow(rawRow: IntArray, y: Int, orientation: String): Boolean {
-        // 1. NEW High-Contrast Screen Pass (Targeting blooming on OLED/Bright screens)
-        val filtered5 = RowBinarizer.medianFilter5(rawRow)
-        if (checkBinary(RowBinarizer.binarizeHighContrast(filtered5), y, "$orientation-HighContrast")) return true
+        // 0. High Density Upsampled Passes (2x interpolation)
+        val upsampled = RowBinarizer.upsample(rawRow)
+        if (checkBinary(RowBinarizer.binarizeAdaptive(upsampled, t = 25), y, "$orientation-Up-Adap25")) return true
+        if (checkBinary(RowBinarizer.binarizeAdaptive(upsampled, t = 15), y, "$orientation-Up-Adap15")) return true
+        if (checkBinary(RowBinarizer.erode(RowBinarizer.binarizeAdaptive(upsampled, t = 15)), y, "$orientation-Up-Erode")) return true
+        if (checkBinary(RowBinarizer.binarizeThick(upsampled), y, "$orientation-Up-Thick")) return true
+        if (checkBinary(RowBinarizer.binarizeThin(upsampled), y, "$orientation-Up-Thin")) return true
 
-        // 2. NEW Sharpened Screen-Spec Pass
-        val sharpened = RowBinarizer.sharpen(rawRow)
-        if (checkBinary(RowBinarizer.binarizeForScreens(sharpened), y, "$orientation-Sharpen-Spec")) return true
+        // 1. Balanced Adaptive Passes
+        if (checkBinary(RowBinarizer.binarizeAdaptive(rawRow, t = 20), y, "$orientation-Adap20")) return true
+        if (checkBinary(RowBinarizer.binarizeAdaptive(rawRow, t = 10), y, "$orientation-Adap10")) return true
 
-        // 3. Contrast Stretch Pass (helps with screen glare)
-        val stretched = RowBinarizer.stretchContrast(rawRow)
-        if (checkBinary(RowBinarizer.binarizeHighDensity(stretched), y, "$orientation-Contrast-HD")) return true
-
-        // 3. Target Screen Glow (Median Filter + Thick Bars + Dilation)
-        val filtered = RowBinarizer.medianFilter(rawRow)
-        if (checkBinary(RowBinarizer.close(RowBinarizer.binarizeThick(filtered)), y, "$orientation-Robust-Close")) return true
-        
-        // 3. High-Density Screen Pass
-        val upsampled = RowBinarizer.upsample(filtered)
-        if (checkBinary(RowBinarizer.binarizeHighDensity(upsampled), y, "$orientation-HD-Up")) return true
-
-        // 4. Screen-Specific Adaptive Pass
+        // 2. Specialized Screen Pass (Optimized threshold + Closing)
         if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "$orientation-Screen-Spec")) return true
-        
-        // 5. Standard Screen-Scan
-        val smoothed = RowBinarizer.smooth(filtered)
-        if (checkBinary(RowBinarizer.binarize(smoothed), y, "$orientation-Smoothed")) return true
-        
-        // 7. Adaptive Pass (Best for varied lighting/screens)
-        return checkBinary(RowBinarizer.open(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(rawRow))), y, "$orientation-Adaptive-Open")
+
+        // 3. Blooming Pass (Thinning bars to recover spaces)
+        if (checkBinary(RowBinarizer.binarizeThin(rawRow), y, "$orientation-Thin")) return true
+
+        // 4. Sharpened Pass (Focuses on bar edges)
+        val sharpened = RowBinarizer.sharpen(rawRow)
+        if (checkBinary(RowBinarizer.binarizeForScreens(sharpened), y, "$orientation-Sharpen")) return true
+
+        // 5. Robust Adaptive Pass (Threshold + Erode)
+        if (checkBinary(RowBinarizer.erode(RowBinarizer.binarizeAdaptive(rawRow, t = 15)), y, "$orientation-Adaptive-Erode")) return true
+
+        // 6. Strong Noise Pass (Median 5 + Thick)
+        val filtered5 = RowBinarizer.medianFilter5(rawRow)
+        if (checkBinary(RowBinarizer.binarizeThick(filtered5), y, "$orientation-Thick5")) return true
+
+        // 7. High Density Pass (Small blocks + Median)
+        val filtered = RowBinarizer.medianFilter(rawRow)
+        if (checkBinary(RowBinarizer.binarizeHighDensity(filtered), y, "$orientation-HD")) return true
+
+        // 8. Extreme Blooming Pass (Very high threshold)
+        if (checkBinary(RowBinarizer.binarizeHighContrast(rawRow), y, "$orientation-X-Thick")) return true
+
+        // 9. Standard passes for completeness
+        if (checkBinary(RowBinarizer.binarizeThick(filtered), y, "$orientation-Thick")) return true
+        if (checkBinary(RowBinarizer.binarize(RowBinarizer.smooth(filtered)), y, "$orientation-Smooth")) return true
+
+        return false
     }
 
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {

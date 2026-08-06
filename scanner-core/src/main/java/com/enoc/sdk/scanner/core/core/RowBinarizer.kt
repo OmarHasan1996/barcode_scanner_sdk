@@ -60,9 +60,9 @@ object RowBinarizer {
         return out
     }
 
-    fun binarizeAdaptive(row: IntArray): BooleanArray {
+    fun binarizeAdaptive(row: IntArray, t: Int = 15): BooleanArray {
         val width = row.size; val out = BooleanArray(width)
-        val s = width / 16; val t = 15
+        val s = width / 16
         val integral = LongArray(width); var sum: Long = 0
         for (i in 0 until width) { sum += row[i]; integral[i] = sum }
         for (i in 0 until width) {
@@ -186,8 +186,8 @@ object RowBinarizer {
             binary[i] = row[i].toLong() * count * 100 < blockSum * (100 - t)
         }
         
-        // 2. Dilate to fill screen-induced gaps
-        return dilate(binary)
+        // 2. Close to fill screen-induced gaps without thickening bars
+        return close(binary)
     }
 
     /** 
@@ -235,7 +235,7 @@ object RowBinarizer {
         return out
     }
 
-    /** Like [binarize], but uses a smaller block size for high-density codes. */
+    /** Like [binarizeHighDensity], but uses a smaller block size for high-density codes. */
     fun binarizeHighDensity(row: IntArray): BooleanArray {
         val width = row.size
         val hdBlockSize = 8
@@ -259,6 +259,18 @@ object RowBinarizer {
         }
         val out = BooleanArray(width)
         for (i in 0 until width) out[i] = row[i] <= finalThresholds[i / hdBlockSize]
+        return out
+    }
+
+    /** Aggressive thinning binarizer (25% threshold) to fight blooming. */
+    fun binarizeThin(row: IntArray): BooleanArray {
+        if (row.isEmpty()) return BooleanArray(0)
+        var minVal = 255; var maxVal = 0
+        for (v in row) { if (v < minVal) minVal = v; if (v > maxVal) maxVal = v }
+        if (maxVal - minVal < MINIMUM_DYNAMIC_RANGE) return BooleanArray(row.size)
+        val threshold = minVal + (maxVal - minVal) * 0.25
+        val out = BooleanArray(row.size)
+        for (i in row.indices) out[i] = row[i] <= threshold
         return out
     }
 }

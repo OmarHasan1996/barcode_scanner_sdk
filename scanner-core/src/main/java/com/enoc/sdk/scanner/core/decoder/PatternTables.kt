@@ -20,43 +20,32 @@ object PatternTables {
     val GUARD_START_END = intArrayOf(1, 1, 1)
     val GUARD_MIDDLE = intArrayOf(1, 1, 1, 1, 1)
 
-    // ---- Code 128 Standard Patterns (ISO/IEC 15417) ----
+    /**
+     * Code 128 Symbol Patterns (ISO/IEC 15417)
+     * Each symbol has 6 runs (3 bars, 3 spaces), totaling 11 modules.
+     */
     val CODE128_PATTERNS: Array<IntArray> = arrayOf(
-        intArrayOf(2,1,2,2,2,2), intArrayOf(2,2,2,1,2,2), intArrayOf(2,2,2,2,2,1),
-        intArrayOf(1,2,1,2,2,3), intArrayOf(1,2,1,3,2,2), intArrayOf(1,3,1,2,2,2),
-        intArrayOf(1,2,2,2,1,3), intArrayOf(1,2,2,3,1,2), intArrayOf(1,3,2,2,1,2),
-        intArrayOf(2,2,1,2,1,3), intArrayOf(2,2,1,3,1,2), intArrayOf(2,3,1,2,1,2),
-        intArrayOf(1,1,2,2,3,2), intArrayOf(1,2,2,1,3,2), intArrayOf(1,2,2,2,3,1),
-        intArrayOf(1,1,3,2,2,2), intArrayOf(1,2,3,1,2,2), intArrayOf(1,2,3,2,2,1),
-        intArrayOf(2,2,3,2,1,1), intArrayOf(2,2,1,1,3,2), intArrayOf(2,2,1,2,3,1),
-        intArrayOf(2,1,3,2,1,2), intArrayOf(2,2,3,1,1,2), intArrayOf(3,1,2,1,3,1),
-        intArrayOf(3,1,1,2,2,2), intArrayOf(3,2,1,1,2,2), intArrayOf(3,2,1,2,2,1),
-        intArrayOf(3,1,2,2,1,2), intArrayOf(3,2,2,1,1,2), intArrayOf(3,2,2,2,1,1),
-        intArrayOf(2,1,2,1,2,3), intArrayOf(2,1,2,3,2,1), intArrayOf(2,3,2,1,2,1),
-        intArrayOf(1,1,1,3,2,3), intArrayOf(1,3,1,1,2,3), intArrayOf(1,3,1,3,2,1),
-        intArrayOf(1,1,2,3,1,3), intArrayOf(1,3,2,1,1,3), intArrayOf(1,3,2,3,1,1),
-        intArrayOf(2,1,1,3,1,3), intArrayOf(2,3,1,1,1,3), intArrayOf(2,3,1,3,1,1),
-        intArrayOf(1,1,2,1,3,3), intArrayOf(1,1,2,3,3,1), intArrayOf(1,3,2,1,3,1),
-        intArrayOf(1,1,3,1,2,3), intArrayOf(1,1,3,3,2,1), intArrayOf(1,3,3,1,2,1),
-        intArrayOf(3,1,3,1,2,1), intArrayOf(2,1,1,3,3,1), intArrayOf(2,3,1,1,3,1),
-        intArrayOf(2,1,3,1,1,3), intArrayOf(2,1,3,3,1,1), intArrayOf(2,1,3,1,3,1),
-        intArrayOf(3,1,1,1,2,3), intArrayOf(3,1,1,3,2,1), intArrayOf(3,3,1,1,2,1),
-        intArrayOf(3,1,2,1,1,3), intArrayOf(3,1,2,3,1,1), intArrayOf(3,3,2,1,1,1),
-        intArrayOf(3,1,4,1,1,1), intArrayOf(2,2,1,4,1,1), intArrayOf(4,3,1,1,1,1),
-        intArrayOf(1,1,1,2,2,4), intArrayOf(1,1,1,4,2,2), intArrayOf(1,2,1,1,2,4),
-        intArrayOf(1,2,1,4,2,1), intArrayOf(1,4,1,1,2,2), intArrayOf(1,4,1,2,2,1),
-        intArrayOf(1,1,2,2,1,4), intArrayOf(1,1,2,4,1,2), intArrayOf(1,2,2,1,1,4),
-        intArrayOf(1,2,2,4,1,1), intArrayOf(1,4,2,1,1,2), intArrayOf(1,4,2,2,1,1),
-        intArrayOf(2,4,1,2,1,1), intArrayOf(2,2,1,1,1,4), intArrayOf(4,1,3,1,1,1),
-        intArrayOf(2,4,1,1,1,2), intArrayOf(1,3,4,1,1,1), intArrayOf(1,1,1,2,4,2),
-        intArrayOf(1,2,1,1,4,2), intArrayOf(1,2,1,2,4,1), intArrayOf(1,1,4,2,1,2),
-        intArrayOf(1,2,4,1,1,2), intArrayOf(1,2,4,2,1,1), intArrayOf(4,1,1,2,1,2),
-        intArrayOf(4,2,1,1,1,2), intArrayOf(4,2,1,2,1,1), intArrayOf(2,1,2,1,4,1),
-        intArrayOf(2,1,4,1,2,1), intArrayOf(4,1,2,1,2,1), intArrayOf(1,1,1,1,4,3),
-        intArrayOf(1,1,1,3,4,1), intArrayOf(1,3,1,1,4,1), intArrayOf(1,1,4,1,1,3),
-        intArrayOf(1,1,4,3,1,1), intArrayOf(4,1,1,1,1,3), intArrayOf(4,1,1,3,1,1),
-        intArrayOf(1,1,3,1,4,1), intArrayOf(1,1,4,1,3,1), intArrayOf(3,1,1,1,4,1),
-        intArrayOf(4,1,1,1,3,1), intArrayOf(2,1,1,4,1,2), intArrayOf(2,1,1,2,1,4),
+        intArrayOf(2,1,2,2,2,2), intArrayOf(2,2,2,1,2,2), intArrayOf(2,2,2,2,2,1), intArrayOf(1,2,1,2,2,3), intArrayOf(1,2,1,3,2,2),
+        intArrayOf(1,3,1,2,2,2), intArrayOf(1,2,2,2,1,3), intArrayOf(1,2,2,3,1,2), intArrayOf(1,3,2,2,1,2), intArrayOf(2,2,1,2,1,3),
+        intArrayOf(2,2,1,3,1,2), intArrayOf(2,3,1,2,1,2), intArrayOf(1,1,2,2,3,2), intArrayOf(1,2,2,1,3,2), intArrayOf(1,2,2,2,3,1),
+        intArrayOf(1,1,3,2,2,2), intArrayOf(1,2,3,1,2,2), intArrayOf(1,2,3,2,2,1), intArrayOf(2,2,3,2,1,1), intArrayOf(2,2,1,1,3,2),
+        intArrayOf(2,2,1,2,3,1), intArrayOf(2,1,3,2,1,2), intArrayOf(2,2,3,1,1,2), intArrayOf(3,1,2,1,3,1), intArrayOf(3,1,1,2,2,2),
+        intArrayOf(3,2,1,1,2,2), intArrayOf(3,2,1,2,2,1), intArrayOf(3,1,2,2,1,2), intArrayOf(3,2,2,1,1,2), intArrayOf(3,2,2,2,1,1),
+        intArrayOf(2,1,2,1,2,3), intArrayOf(2,1,2,3,2,1), intArrayOf(2,3,2,1,2,1), intArrayOf(1,1,1,3,2,3), intArrayOf(1,3,1,1,2,3),
+        intArrayOf(1,3,1,3,2,1), intArrayOf(1,1,2,3,1,3), intArrayOf(1,3,2,1,1,3), intArrayOf(1,3,2,3,1,1), intArrayOf(2,1,1,3,1,3),
+        intArrayOf(2,3,1,1,1,3), intArrayOf(2,3,1,3,1,1), intArrayOf(1,1,2,1,3,3), intArrayOf(1,1,2,3,3,1), intArrayOf(1,3,2,1,3,1),
+        intArrayOf(1,1,3,1,2,3), intArrayOf(1,1,3,3,2,1), intArrayOf(1,3,3,1,2,1), intArrayOf(3,1,3,1,2,1), intArrayOf(2,1,1,3,3,1),
+        intArrayOf(2,3,1,1,3,1), intArrayOf(2,1,3,1,1,3), intArrayOf(2,1,3,3,1,1), intArrayOf(2,1,3,1,3,1), intArrayOf(3,1,1,1,2,3),
+        intArrayOf(3,1,1,3,2,1), intArrayOf(3,3,1,1,2,1), intArrayOf(3,1,2,1,1,3), intArrayOf(3,1,2,3,1,1), intArrayOf(3,3,2,1,1,1),
+        intArrayOf(3,1,4,1,1,1), intArrayOf(2,2,1,4,1,1), intArrayOf(4,3,1,1,1,1), intArrayOf(1,1,1,2,2,4), intArrayOf(1,1,1,4,2,2),
+        intArrayOf(1,2,1,1,2,4), intArrayOf(1,2,1,4,2,1), intArrayOf(1,4,1,1,2,2), intArrayOf(1,4,1,2,2,1), intArrayOf(1,1,2,2,1,4),
+        intArrayOf(1,1,2,4,1,2), intArrayOf(1,2,2,1,1,4), intArrayOf(1,2,2,4,1,1), intArrayOf(1,4,2,1,1,2), intArrayOf(1,4,2,2,1,1),
+        intArrayOf(2,4,1,2,1,1), intArrayOf(2,2,1,1,1,4), intArrayOf(4,1,3,1,1,1), intArrayOf(2,4,1,1,1,2), intArrayOf(1,3,4,1,1,1),
+        intArrayOf(1,1,1,2,4,2), intArrayOf(1,2,1,1,4,2), intArrayOf(1,2,1,2,4,1), intArrayOf(1,1,4,2,1,2), intArrayOf(1,2,4,1,1,2),
+        intArrayOf(1,2,4,2,1,1), intArrayOf(4,1,1,2,1,2), intArrayOf(4,2,1,1,1,2), intArrayOf(4,2,1,2,1,1), intArrayOf(2,1,2,1,4,1),
+        intArrayOf(2,1,4,1,2,1), intArrayOf(4,1,2,1,2,1), intArrayOf(1,1,1,1,4,3), intArrayOf(1,1,1,3,4,1), intArrayOf(1,3,1,1,4,1),
+        intArrayOf(1,1,4,1,1,3), intArrayOf(1,1,4,3,1,1), intArrayOf(4,1,1,1,1,3), intArrayOf(4,1,1,3,1,1), intArrayOf(1,1,3,1,4,1),
+        intArrayOf(1,1,4,1,3,1), intArrayOf(3,1,1,1,4,1), intArrayOf(4,1,1,1,3,1), intArrayOf(2,1,1,4,1,2), intArrayOf(2,1,1,2,1,4),
         intArrayOf(2,1,1,2,3,2)
     )
 
