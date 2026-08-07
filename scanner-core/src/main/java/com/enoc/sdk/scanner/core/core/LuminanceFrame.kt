@@ -60,8 +60,7 @@ class LuminanceFrame(
                 val sx = srcWidth - 1 - y
                 val base = sx * pixelStride
                 for (x in 0 until width) {
-                    val sy = x
-                    out[x] = yBytes[sy * rowStride + base].toInt() and 0xFF
+                    out[x] = yBytes[x * rowStride + base].toInt() and 0xFF
                 }
             }
             else -> throw IllegalArgumentException("Unsupported rotation: $rotationDegrees")
@@ -82,14 +81,12 @@ class LuminanceFrame(
                     yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
                 }
                 90 -> {
-                    val sx = y
                     val sy = srcHeight - 1 - x
-                    yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+                    yBytes[sy * rowStride + y * pixelStride].toInt() and 0xFF
                 }
                 270 -> {
                     val sx = srcWidth - 1 - y
-                    val sy = x
-                    yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+                    yBytes[x * rowStride + sx * pixelStride].toInt() and 0xFF
                 }
                 else -> 0
             }
@@ -107,15 +104,14 @@ class LuminanceFrame(
         val length = minOf(width, height)
         val out = IntArray(length)
         for (i in 0 until length) {
-            val x = i
             val y = if (slope > 0) i else height - 1 - i
             
             // upright(x, y) coordinate mapping:
             out[i] = when (rotationDegrees) {
-                0 -> yBytes[y * rowStride + x * pixelStride].toInt() and 0xFF
-                180 -> yBytes[(srcHeight - 1 - y) * rowStride + (srcWidth - 1 - x) * pixelStride].toInt() and 0xFF
-                90 -> yBytes[(srcHeight - 1 - x) * rowStride + y * pixelStride].toInt() and 0xFF
-                270 -> yBytes[x * rowStride + (srcWidth - 1 - y) * pixelStride].toInt() and 0xFF
+                0 -> yBytes[y * rowStride + i * pixelStride].toInt() and 0xFF
+                180 -> yBytes[(srcHeight - 1 - y) * rowStride + (srcWidth - 1 - i) * pixelStride].toInt() and 0xFF
+                90 -> yBytes[(srcHeight - 1 - i) * rowStride + y * pixelStride].toInt() and 0xFF
+                270 -> yBytes[i * rowStride + (srcWidth - 1 - y) * pixelStride].toInt() and 0xFF
                 else -> 0
             }
         }

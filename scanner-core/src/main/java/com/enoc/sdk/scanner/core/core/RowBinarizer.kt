@@ -87,15 +87,15 @@ object RowBinarizer {
 
     /** 
      * Fills small white gaps (1-2 pixels) in black bars. 
-     * Essential for screen scans where aliasing or moire patterns cause "ghost" white lines.
+     * Essential for screen scans where aliasing or more patterns cause "ghost" white lines.
      */
     fun dilate(row: BooleanArray): BooleanArray {
         if (row.size < 3) return row
         val out = BooleanArray(row.size)
-        for (i in 0 until row.size) {
+        for ((i, element) in row.withIndex()) {
             val prev = if (i > 0) row[i - 1] else false
             val next = if (i < row.size - 1) row[i + 1] else false
-            out[i] = row[i] || prev || next
+            out[i] = element || prev || next
         }
         return out
     }
@@ -103,10 +103,10 @@ object RowBinarizer {
     fun erode(row: BooleanArray): BooleanArray {
         if (row.size < 3) return row
         val out = BooleanArray(row.size)
-        for (i in 0 until row.size) {
+        for ((i, element) in row.withIndex()) {
             val prev = if (i > 0) row[i - 1] else true
             val next = if (i < row.size - 1) row[i + 1] else true
-            out[i] = row[i] && prev && next
+            out[i] = element && prev && next
         }
         return out
     }

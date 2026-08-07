@@ -15,7 +15,7 @@ open class EAN13Decoder : Decoder {
 
     override fun decode(rowRuns: RowRuns): BarcodeResult? {
         val runs = rowRuns.runs
-        var startsBlack = rowRuns.startsBlack
+        val startsBlack = rowRuns.startsBlack
 
         // Guards are bars (black), so the first run of the guard must be black.
         // Try every plausible starting index where colors line up (black,white,black,...).

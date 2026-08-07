@@ -5,7 +5,27 @@ package com.enoc.sdk.scanner.core.core
  * [startsBlack] tells you the color of runs[0]; after that colors just alternate.
  * [label] is a diagnostic tag indicating which binarizer created these runs.
  */
-data class RowRuns(val runs: IntArray, val startsBlack: Boolean, val label: String = "")
+data class RowRuns(val runs: IntArray, val startsBlack: Boolean, val label: String = "") {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as RowRuns
+
+        if (startsBlack != other.startsBlack) return false
+        if (!runs.contentEquals(other.runs)) return false
+        if (label != other.label) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = startsBlack.hashCode()
+        result = 31 * result + runs.contentHashCode()
+        result = 31 * result + label.hashCode()
+        return result
+    }
+}
 
 object RunLengthReader {
 

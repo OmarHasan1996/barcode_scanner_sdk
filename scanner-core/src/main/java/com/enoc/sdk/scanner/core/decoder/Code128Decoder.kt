@@ -43,7 +43,7 @@ class Code128Decoder : Decoder {
 
             val window = runs.copyOfRange(i, i + 6)
             val unit = window.sum() / 11.0
-            if (unit < 0.7 || unit > 15.0) continue 
+            if (unit !in 0.7..15.0) continue
 
             // Quiet zone check: at least 4 modules of white space before the start pattern.
             // Relaxed from 6.0 for noisy screens.

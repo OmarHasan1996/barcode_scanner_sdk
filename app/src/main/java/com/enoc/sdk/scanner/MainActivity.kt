@@ -31,13 +31,9 @@ import androidx.compose.material3.Button
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.enoc.sdk.scanner.core.ScannerView
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -47,73 +43,37 @@ class MainActivity : ComponentActivity() {
                 val scannerManager = remember { ScannerManager(context.applicationContext) }
                 val scope = rememberCoroutineScope()
                 
-                val cameraPermissionState = rememberPermissionState(
-                    android.Manifest.permission.CAMERA
-                )
-
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        if (cameraPermissionState.status.isGranted) {
-                            var lastScannedCode by remember { mutableStateOf("Ready to scan") }
-                            var showScanner by remember { mutableStateOf(false) }
-                            
-                            if (showScanner) {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    ScannerView(
-                                        onBarcodeDetected = { result ->
-                                            // Optional: ScannerView can also handle direct callbacks
-                                        }
-                                    )
-
-                                    Column(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = lastScannedCode,
-                                            color = Color.White,
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                        
-                                        Button(onClick = { showScanner = false }) {
-                                            Text("Close Scanner")
-                                        }
+                        var lastScannedCode by remember { mutableStateOf("Ready to scan") }
+                        var showScanner by remember { mutableStateOf(false) }
+                        
+                        if (showScanner) {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                // ScannerView now handles permission internally
+                                ScannerView(
+                                    onBarcodeDetected = { result ->
+                                        // Optional: Handle result here too
                                     }
-                                }
-                            } else {
+                                )
+
                                 Column(
-                                    modifier = Modifier.fillMaxSize(),
-                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
                                         text = lastScannedCode,
-                                        fontSize = 18.sp,
-                                        modifier = Modifier.padding(bottom = 16.dp)
+                                        color = Color.White,
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(8.dp)
                                     )
                                     
-                                    Button(onClick = {
-                                        showScanner = true
-                                        scope.launch {
-                                            scannerManager.scanOnce().collect { outcome ->
-                                                when (outcome) {
-                                                    is ScanOutcome.Success -> {
-                                                        lastScannedCode = "Result: ${outcome.value}"
-                                                        showScanner = false
-                                                    }
-                                                    is ScanOutcome.Error -> {
-                                                        lastScannedCode = "Error: ${outcome.message}"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }) {
-                                        Text("Start Scan Session")
+                                    Button(onClick = { showScanner = false }) {
+                                        Text("Close Scanner")
                                     }
                                 }
                             }
@@ -123,11 +83,29 @@ class MainActivity : ComponentActivity() {
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("Camera permission is required")
-                                Button(
-                                    onClick = { cameraPermissionState.launchPermissionRequest() }
-                                ) {
-                                    Text("Request Permission")
+                                Text(
+                                    text = lastScannedCode,
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                                
+                                Button(onClick = {
+                                    showScanner = true
+                                    scope.launch {
+                                        scannerManager.scanOnce().collect { outcome ->
+                                            when (outcome) {
+                                                is ScanOutcome.Success -> {
+                                                    lastScannedCode = "Result: ${outcome.value}"
+                                                    showScanner = false
+                                                }
+                                                is ScanOutcome.Error -> {
+                                                    lastScannedCode = "Error: ${outcome.message}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }) {
+                                    Text("Start Scan Session")
                                 }
                             }
                         }

@@ -20,3 +20,4 @@ scanner-core/build/outputs
 scanner-core/build/intermediates/runtime_library_classes_dir
 scanner-core/build/kotlin/compileDebugKotlin
 scanner-core/build
+.kotlin
