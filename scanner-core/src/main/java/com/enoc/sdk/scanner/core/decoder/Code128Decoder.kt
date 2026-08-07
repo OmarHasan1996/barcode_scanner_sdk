@@ -66,8 +66,8 @@ class Code128Decoder : Decoder {
             if (!isBlack) continue
 
             if (isStopPattern(runs, i, 0.0, label)) {
-                val window = runs.copyOfRange(i, i + 7)
-                val unit = window.sum() / 13.0
+                val window = runs.copyOfRange(i, minOf(i + 7, runs.size))
+                val unit = if (window.size == 7) window.sum() / 13.0 else window.sum() / 11.0
                 stops.add(Candidate(i, -1, unit))
                 Log.d("Code128Decoder", "[$label] STOP candidate at idx=$i, unit=${"%.2f".format(unit)}")
             }
@@ -183,7 +183,7 @@ class Code128Decoder : Decoder {
         val window = runs.copyOfRange(idx, minOf(idx + 7, runs.size))
         val stopUnit = if (window.size == 7) window.sum() / 13.0 else window.sum() / 11.0
 
-        val unitToUse = if (rollingUnit > 0 && abs(stopUnit - rollingUnit) < rollingUnit * 0.4) stopUnit else stopUnit
+        val unitToUse = if (rollingUnit > 0 && abs(stopUnit - rollingUnit) < rollingUnit * 0.4) rollingUnit else stopUnit
 
         val first6 = window.copyOfRange(0, 6)
         val idealFirst6 = PatternTables.CODE128_STOP.copyOfRange(0, 6)
