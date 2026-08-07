@@ -8,14 +8,24 @@ import android.content.Context
  */
 object ScannerSdk {
     private var isInitialized = false
+    private var scannerInstance: ScannerImpl? = null
 
     /**
      * Initialize the SDK.
      */
     fun init(context: Context) {
         if (isInitialized) return
-        // Perform any necessary setup here
         isInitialized = true
+    }
+
+    /**
+     * Get a scanner instance.
+     */
+    fun getScanner(): Scanner {
+        if (scannerInstance == null) {
+            scannerInstance = ScannerImpl()
+        }
+        return scannerInstance!!
     }
 
     fun isInitialized(): Boolean = isInitialized

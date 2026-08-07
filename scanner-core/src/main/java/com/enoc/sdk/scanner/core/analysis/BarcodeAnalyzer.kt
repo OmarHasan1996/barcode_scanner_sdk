@@ -20,6 +20,7 @@ import com.enoc.sdk.scanner.core.model.BarcodeResult
  */
 class BarcodeAnalyzer(
     formats: Set<BarcodeFormat>,
+    private val continueScan: Boolean = false,
     private val rowsPerFrame: Int = 200,
     private val onResult: (BarcodeResult) -> Unit
 ) : ImageAnalysis.Analyzer {
@@ -147,7 +148,9 @@ class BarcodeAnalyzer(
         val runs = RunLengthReader.toRuns(RowBinarizer.deSpeckle(binary), label)
         decoder.decode(runs)?.let { result ->
             Log.i("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
-            hasScanned = true
+            if (!continueScan) {
+                hasScanned = true
+            }
             onResult(result.copy(rowY = y))
             return true
         }
