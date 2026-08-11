@@ -1,6 +1,8 @@
 package com.enoc.sdk.scanner.core
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.media.AudioManager
 import android.media.ToneGenerator
 import com.enoc.sdk.scanner.core.model.BarcodeFormat
@@ -10,6 +12,9 @@ class ScannerImpl : Scanner {
     private val enabledFormats = mutableSetOf<BarcodeFormat>()
     private var activeListener: OnScanListener? = null
     private var toneGenerator: ToneGenerator? = null
+    
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var timeoutRunnable: Runnable? = null
 
     override val scanLibVersion: String = "1.0.0-enoc-core"
 
@@ -40,12 +45,23 @@ class ScannerImpl : Scanner {
     override fun safeGetVersion(): String = scanLibVersion
 
     override fun startScan(timeoutSecond: Int, listener: OnScanListener) {
+        stopScan()
         this.activeListener = listener
-        // In this architecture, startScan signals the manager that camera is ready.
-        // The actual scan results are produced by ScannerView -> BarcodeAnalyzer.
+        
+        if (timeoutSecond > 0) {
+            val task = Runnable {
+                if (activeListener == listener) {
+                    dispatchResult(Scanner.SCANNER_TIMEOUT, null)
+                }
+            }
+            timeoutRunnable = task
+            mainHandler.postDelayed(task, timeoutSecond * 1000L)
+        }
     }
 
     override fun stopScan() {
+        timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        timeoutRunnable = null
         activeListener = null
     }
 
@@ -76,10 +92,9 @@ class ScannerImpl : Scanner {
      * Internal helper to dispatch results back to the listener.
      */
     fun dispatchResult(result: Int, data: String?) {
-        if (result == Scanner.SCANNER_SUCCESS) {
-            playBeep()
-        }
+        playBeep()
         activeListener?.onScanResult(result, data?.toByteArray())
+        stopScan()
     }
 
     private fun playBeep() {

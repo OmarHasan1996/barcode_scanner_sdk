@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
                                                 }
                                                 is ScanOutcome.Error -> {
                                                     lastScannedCode = "Error: ${outcome.message}"
+                                                    showScanner = false
                                                 }
                                             }
                                         }
