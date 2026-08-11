@@ -1,12 +1,15 @@
 package com.enoc.sdk.scanner.core
 
 import android.os.Bundle
+import android.media.AudioManager
+import android.media.ToneGenerator
 import com.enoc.sdk.scanner.core.model.BarcodeFormat
 
 class ScannerImpl : Scanner {
     private var config = Bundle()
     private val enabledFormats = mutableSetOf<BarcodeFormat>()
     private var activeListener: OnScanListener? = null
+    private var toneGenerator: ToneGenerator? = null
 
     override val scanLibVersion: String = "1.0.0-enoc-core"
 
@@ -49,6 +52,8 @@ class ScannerImpl : Scanner {
     override fun release() {
         activeListener = null
         enabledFormats.clear()
+        toneGenerator?.release()
+        toneGenerator = null
     }
 
     /**
@@ -71,6 +76,22 @@ class ScannerImpl : Scanner {
      * Internal helper to dispatch results back to the listener.
      */
     fun dispatchResult(result: Int, data: String?) {
+        if (result == Scanner.SCANNER_SUCCESS) {
+            playBeep()
+        }
         activeListener?.onScanResult(result, data?.toByteArray())
+    }
+
+    private fun playBeep() {
+        if (config.getBoolean(Scanner.SCANNER_PLAY_BEEP, false)) {
+            try {
+                if (toneGenerator == null) {
+                    toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                }
+                toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP)
+            } catch (e: Exception) {
+                // Ignore failure to play beep
+            }
+        }
     }
 }
