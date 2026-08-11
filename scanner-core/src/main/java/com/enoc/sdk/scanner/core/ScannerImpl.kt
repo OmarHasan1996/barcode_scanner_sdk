@@ -45,28 +45,49 @@ class ScannerImpl : Scanner {
     override fun safeGetVersion(): String = scanLibVersion
 
     override fun startScan(timeoutSecond: Int, listener: OnScanListener) {
-        stopScan()
-        this.activeListener = listener
-        
-        if (timeoutSecond > 0) {
-            val task = Runnable {
-                if (activeListener == listener) {
-                    dispatchResult(Scanner.SCANNER_TIMEOUT, null)
-                }
-            }
-            timeoutRunnable = task
-            mainHandler.postDelayed(task, timeoutSecond * 1000L)
+        // Validate parameters
+        if (timeoutSecond <= 0) {
+            listener.onScanResult(Scanner.SCANNER_PARAM_INVALID, "Timeout should be more than zero".toByteArray())
+            return
         }
+
+        val resWidth = config.getInt(Scanner.SCANNER_RESOLUTION_WIDTH, 1280)
+        val resHeight = config.getInt(Scanner.SCANNER_RESOLUTION_HEIGHT, 720)
+        if (resWidth <= 0 || resHeight <= 0) {
+            listener.onScanResult(Scanner.SCANNER_PARAM_INVALID, "Scanner Resolution should be more than zero".toByteArray())
+            return
+        }
+
+        stopScanInternal()
+        this.activeListener = listener
+
+        val task = Runnable {
+            if (activeListener == listener) {
+                dispatchResult(Scanner.SCANNER_TIMEOUT, null)
+            }
+        }
+        timeoutRunnable = task
+        mainHandler.postDelayed(task, timeoutSecond * 1000L)
     }
 
     override fun stopScan() {
+        if (activeListener != null) {
+            val listener = activeListener
+            stopScanInternal()
+            listener?.onScanResult(Scanner.SCANNER_EXIT, null)
+        } else {
+            stopScanInternal()
+        }
+    }
+
+    private fun stopScanInternal() {
         timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         timeoutRunnable = null
         activeListener = null
     }
 
     override fun release() {
-        activeListener = null
+        stopScanInternal()
         enabledFormats.clear()
         toneGenerator?.release()
         toneGenerator = null
@@ -92,9 +113,19 @@ class ScannerImpl : Scanner {
      * Internal helper to dispatch results back to the listener.
      */
     fun dispatchResult(result: Int, data: String?) {
-        playBeep()
-        activeListener?.onScanResult(result, data?.toByteArray())
-        stopScan()
+        if (result == Scanner.SCANNER_SUCCESS) {
+            playBeep()
+            val listener = activeListener
+            val continueScan = config.getBoolean(Scanner.SCANNER_CONTINUE_SCAN, false)
+            if (!continueScan) {
+                stopScanInternal()
+            }
+            listener?.onScanResult(result, data?.toByteArray())
+        } else {
+            val listener = activeListener
+            stopScanInternal()
+            listener?.onScanResult(result, data?.toByteArray())
+        }
     }
 
     private fun playBeep() {
@@ -104,7 +135,7 @@ class ScannerImpl : Scanner {
                     toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
                 }
                 toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore failure to play beep
             }
         }

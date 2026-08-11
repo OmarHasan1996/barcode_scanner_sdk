@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
 
     // CameraX - Use 'api' to ensure consumers have access if needed
     api(libs.androidx.camera.core)

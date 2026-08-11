@@ -19,8 +19,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +55,7 @@ import java.util.concurrent.Executors
 @Composable
 fun ScannerView(
     modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
     onBarcodeDetected: (BarcodeResult) -> Unit
 ) {
     val context = LocalContext.current
@@ -78,7 +84,7 @@ fun ScannerView(
     }
 
     if (hasPermission) {
-        ScannerCameraPreview(modifier, onBarcodeDetected)
+        ScannerCameraPreview(modifier, onClose, onBarcodeDetected)
     } else {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
@@ -101,6 +107,7 @@ fun ScannerView(
 @Composable
 private fun ScannerCameraPreview(
     modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
     onBarcodeDetected: (BarcodeResult) -> Unit
 ) {
     val context = LocalContext.current
@@ -212,5 +219,25 @@ private fun ScannerCameraPreview(
                     shape = RoundedCornerShape(12.dp)
                 )
         )
+
+        // Exit button at top right
+        onClose?.let { closeAction ->
+            IconButton(
+                onClick = {
+                    scanner.stopScan()
+                    closeAction()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close Scanner",
+                    tint = Color.White
+                )
+            }
+        }
     }
 }
