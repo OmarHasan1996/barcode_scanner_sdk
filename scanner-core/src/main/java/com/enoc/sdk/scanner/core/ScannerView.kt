@@ -10,14 +10,16 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +31,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -158,19 +166,48 @@ private fun ScannerCameraPreview(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+    ) {
         AndroidView(
             factory = { previewView },
             modifier = Modifier.fillMaxSize()
         )
 
-        // Red viewfinder line
+        // Dark overlay outside the viewfinder
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val viewfinderWidth = size.width * 0.8f
+            val viewfinderHeight = size.height * 0.2f
+            val left = (size.width - viewfinderWidth) / 2
+            val top = (size.height - viewfinderHeight) / 2
+
+            clipPath(
+                path = Path().apply {
+                    addRoundRect(
+                        RoundRect(
+                            rect = Rect(left, top, left + viewfinderWidth, top + viewfinderHeight),
+                            cornerRadius = CornerRadius(12.dp.toPx())
+                        )
+                    )
+                },
+                clipOp = ClipOp.Difference
+            ) {
+                drawRect(Color.Black.copy(alpha = 0.6f))
+            }
+        }
+
+        // Viewfinder box with white border and rounded corners
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth(0.8f)
-                .height(2.dp)
-                .background(Color.Red.copy(alpha = 0.8f))
+                .fillMaxHeight(0.2f)
+                .border(
+                    width = 2.dp,
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp)
+                )
         )
     }
 }
