@@ -1,9 +1,9 @@
 package com.enoc.sdk.scanner.core.decoder
 
-import android.util.Log
 import com.enoc.sdk.scanner.core.core.RowRuns
 import com.enoc.sdk.scanner.core.model.BarcodeFormat
 import com.enoc.sdk.scanner.core.model.BarcodeResult
+import com.enoc.sdk.scanner.core.utils.Logger
 import kotlin.math.abs
 
 /**
@@ -54,7 +54,7 @@ class Code128Decoder : Decoder {
             val startValue = matchSymbol(window, unit, 0.8, 0.05) ?: continue
             if (startValue in 103..105) {
                 starts.add(Candidate(i, startValue, unit))
-                Log.d("Code128Decoder", "[$label] START candidate at idx=$i, val=$startValue, unit=${"%.2f".format(unit)}")
+                Logger.d("Code128Decoder", "[$label] START candidate at idx=$i, val=$startValue, unit=${"%.2f".format(unit)}")
             }
         }
 
@@ -69,7 +69,7 @@ class Code128Decoder : Decoder {
                 val window = runs.copyOfRange(i, minOf(i + 7, runs.size))
                 val unit = if (window.size == 7) window.sum() / 13.0 else window.sum() / 11.0
                 stops.add(Candidate(i, -1, unit))
-                Log.d("Code128Decoder", "[$label] STOP candidate at idx=$i, unit=${"%.2f".format(unit)}")
+                Logger.d("Code128Decoder", "[$label] STOP candidate at idx=$i, unit=${"%.2f".format(unit)}")
             }
         }
 
@@ -84,10 +84,10 @@ class Code128Decoder : Decoder {
                 val numSymbols = runsBetween / 6
                 if (numSymbols < 4) continue 
 
-                Log.d("Code128Decoder", "[$label] Attempting pairing: Start@${start.idx} -> Stop@${stop.idx} ($numSymbols data+chk symbols)")
+                Logger.d("Code128Decoder", "[$label] Attempting pairing: Start@${start.idx} -> Stop@${stop.idx} ($numSymbols data+chk symbols)")
                 val result = tryDecodeRange(runs, start, stop, numSymbols, label)
                 if (result != null) {
-                    Log.i("Code128Decoder", "SUCCESS: Found barcode via range search. Symbols=$numSymbols, Pass=$label")
+                    Logger.i("Code128Decoder", "SUCCESS: Found barcode via range search. Symbols=$numSymbols, Pass=$label")
                     return result
                 }
             }
@@ -117,7 +117,7 @@ class Code128Decoder : Decoder {
             // Match with interpolated unit; relaxed tolerance for internal symbols
             val value = matchSymbol(window, interpolatedUnit, 1.2, 0.05)
             if (value == null) {
-                Log.d("Code128Decoder", "[$label] Range pairing fail at sym $s (idx=$windowIdx, unit=${"%.2f".format(interpolatedUnit)}). Window: ${window.joinToString(",")}")
+                Logger.d("Code128Decoder", "[$label] Range pairing fail at sym $s (idx=$windowIdx, unit=${"%.2f".format(interpolatedUnit)}). Window: ${window.joinToString(",")}")
                 return null
             }
             values.add(value)

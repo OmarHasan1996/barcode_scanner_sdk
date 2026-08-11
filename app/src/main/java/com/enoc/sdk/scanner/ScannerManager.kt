@@ -43,6 +43,7 @@ class ScannerManager(private val appContext: Context) {
         putInt(Scanner.SCANNER_DECODE_MODE, Scanner.DECODE_MODE_ALL)
         putBoolean(Scanner.SCANNER_IS_BACK_CAMERA, true)
         putBoolean(Scanner.SCANNER_IS_TORCH_ON, false)
+        putBoolean(Scanner.SCANNER_IS_LOG_ENABLE, false)
     }
 
     suspend fun ensureInitialized() = initMutex.withLock {

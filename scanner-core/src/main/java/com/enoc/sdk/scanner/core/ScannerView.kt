@@ -50,6 +50,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.enoc.sdk.scanner.core.analysis.BarcodeAnalyzer
 import com.enoc.sdk.scanner.core.model.BarcodeResult
+import com.enoc.sdk.scanner.core.utils.Logger
 import java.util.concurrent.Executors
 
 @Composable
@@ -172,7 +173,7 @@ private fun ScannerCameraPreview(
             camera.cameraControl.setZoomRatio(1.5f)
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            Logger.e("ScannerView", "Camera binding failed", e)
         }
     }
 

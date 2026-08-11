@@ -6,6 +6,7 @@ import android.os.Looper
 import android.media.AudioManager
 import android.media.ToneGenerator
 import com.enoc.sdk.scanner.core.model.BarcodeFormat
+import com.enoc.sdk.scanner.core.utils.Logger
 
 class ScannerImpl : Scanner {
     private var config = Bundle()
@@ -20,10 +21,16 @@ class ScannerImpl : Scanner {
 
     override fun initScanner(config: Bundle) {
         this.config = config
+        applyLoggingConfig()
     }
 
     override fun setConfiguration(config: Bundle) {
         this.config = config
+        applyLoggingConfig()
+    }
+
+    private fun applyLoggingConfig() {
+        Logger.isLogEnabled = config.getBoolean(Scanner.SCANNER_IS_LOG_ENABLE, true)
     }
 
     override fun enableAllCodeType(enable: Boolean) {

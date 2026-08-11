@@ -1,7 +1,5 @@
 package com.enoc.sdk.scanner.core.analysis
 
-
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -12,6 +10,7 @@ import com.enoc.sdk.scanner.core.core.RunLengthReader
 import com.enoc.sdk.scanner.core.decoder.CompositeDecoder
 import com.enoc.sdk.scanner.core.model.BarcodeFormat
 import com.enoc.sdk.scanner.core.model.BarcodeResult
+import com.enoc.sdk.scanner.core.utils.Logger
 
 /**
  * Scans a handful of horizontal rows per frame (barcodes are usually held
@@ -31,7 +30,7 @@ class BarcodeAnalyzer(
     private var hasScanned = false
 
     fun reset() {
-        Log.d("BarcodeAnalyzer", "Scanner reset")
+        Logger.d("BarcodeAnalyzer", "Scanner reset")
         hasScanned = false
     }
 
@@ -147,7 +146,7 @@ class BarcodeAnalyzer(
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {
         val runs = RunLengthReader.toRuns(RowBinarizer.deSpeckle(binary), label)
         decoder.decode(runs)?.let { result ->
-            Log.i("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
+            Logger.i("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
             if (!continueScan) {
                 hasScanned = true
             }
