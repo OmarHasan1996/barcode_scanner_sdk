@@ -78,7 +78,7 @@ class ScannerManager(private val appContext: Context) {
     private fun Scanner.safeGetVersion(): String =
         try { this.scanLibVersion } catch (_: Exception) { "unknown" }
 
-    fun scanOnce(timeoutSecond: Int = 3): Flow<ScanOutcome> = callbackFlow {
+    fun scanOnce(timeoutSecond: Int = 30): Flow<ScanOutcome> = callbackFlow {
         ensureInitialized()
         val scanner = scanner
         if (!initialized || scanner == null) {

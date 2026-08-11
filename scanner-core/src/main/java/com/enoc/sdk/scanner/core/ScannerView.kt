@@ -5,8 +5,10 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -52,6 +54,7 @@ import com.enoc.sdk.scanner.core.analysis.BarcodeAnalyzer
 import com.enoc.sdk.scanner.core.model.BarcodeResult
 import com.enoc.sdk.scanner.core.utils.Logger
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun ScannerView(
@@ -129,6 +132,7 @@ private fun ScannerCameraPreview(
             it.surfaceProvider = previewView.surfaceProvider
         }
 
+        // Optimize resolution for high-res 5MP cameras
         val resWidth = config.getInt(Scanner.SCANNER_RESOLUTION_WIDTH, 1280)
         val resHeight = config.getInt(Scanner.SCANNER_RESOLUTION_HEIGHT, 720)
 
@@ -165,12 +169,26 @@ private fun ScannerCameraPreview(
                 imageAnalysis
             )
 
+            // INDUSTRIAL OPTIMIZATION: Area-specific Focus & Metering
+            // We lock the focus and auto-exposure to the center rectangle (viewfinder)
+            val factory = SurfaceOrientedMeteringPointFactory(
+                previewView.width.toFloat(),
+                previewView.height.toFloat()
+            )
+            // The viewfinder is 90% wide and 20% high
+            val centerPoint = factory.createPoint(0.5f, 0.5f, 0.2f)
+            val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+                .setAutoCancelDuration(1, TimeUnit.SECONDS)
+                .build()
+
+            camera.cameraControl.startFocusAndMetering(action)
+
             // Torch control
             val isTorchOn = config.getBoolean(Scanner.SCANNER_IS_TORCH_ON, false)
             camera.cameraControl.enableTorch(isTorchOn)
 
-            // Default zoom for high-density codes
-            camera.cameraControl.setZoomRatio(1.5f)
+            // Sub-zoom for better bar separation on 5MP sensors
+            camera.cameraControl.setZoomRatio(1.2f)
 
         } catch (e: Exception) {
             Logger.e("ScannerView", "Camera binding failed", e)
