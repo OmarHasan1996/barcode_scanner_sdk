@@ -37,6 +37,7 @@ android {
 
 dependencies {
     implementation(project(":scanner-core"))
+//    implementation(files("libs/scanner-core-release.aar"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.accompanist.permissions)
     implementation(libs.androidx.activity.compose)
