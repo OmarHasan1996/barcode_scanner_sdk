@@ -12,6 +12,8 @@ interface Scanner {
         const val SCANNER_DECODE_MODE = "scanner_decode_mode"
         const val SCANNER_IS_BACK_CAMERA = "scanner_is_back_camera"
         const val SCANNER_IS_TORCH_ON = "scanner_is_torch_on"
+        const val SCANNER_RESOLUTION_WIDTH = "scanner_resolution_width"
+        const val SCANNER_RESOLUTION_HEIGHT = "scanner_resolution_height"
 
         const val DECODE_MODE_ALL = 0
         const val DECODE_MODE_SINGLE = 1

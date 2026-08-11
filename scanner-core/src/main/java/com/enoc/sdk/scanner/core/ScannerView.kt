@@ -121,10 +121,13 @@ private fun ScannerCameraPreview(
             it.surfaceProvider = previewView.surfaceProvider
         }
 
+        val resWidth = config.getInt(Scanner.SCANNER_RESOLUTION_WIDTH, 1280)
+        val resHeight = config.getInt(Scanner.SCANNER_RESOLUTION_HEIGHT, 720)
+
         val resolutionSelector = ResolutionSelector.Builder()
             .setResolutionStrategy(
                 androidx.camera.core.resolutionselector.ResolutionStrategy(
-                    android.util.Size(1280, 720),
+                    android.util.Size(resWidth, resHeight),
                     androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER
                 )
             )
