@@ -1,12 +1,13 @@
 package com.enoc.sdk.scanner.core.core
 
+import kotlin.math.*
+
 /**
  * Holds the Y-plane (luminance) bytes of a camera frame plus enough geometry
  * info to read individual rows in "upright" (post-rotation) coordinates,
  * without ever allocating a rotated copy of the whole frame.
  *
- * We only ever need a handful of horizontal rows per frame, so we resolve
- * rotation lazily, per requested row, instead of transforming the whole image.
+ * Supports arbitrary rotation degrees. Standard 90-degree increments are highly optimized.
  */
 class LuminanceFrame(
     private val yBytes: ByteArray,
@@ -16,36 +17,53 @@ class LuminanceFrame(
     private val pixelStride: Int,
     private val rotationDegrees: Int
 ) {
-    /** Width of the frame once rotation is applied (i.e. "upright" width). */
-    val width: Int = if (rotationDegrees == 90 || rotationDegrees == 270) srcHeight else srcWidth
+    private val radians = Math.toRadians(rotationDegrees.toDouble())
+    private val cosR = cos(radians)
+    private val sinR = sin(radians)
+
+    /** Width of the frame once rotation is applied. */
+    val width: Int = if (rotationDegrees % 90 == 0) {
+        if (rotationDegrees % 180 == 0) srcWidth else srcHeight
+    } else {
+        (abs(srcWidth * cosR) + abs(srcHeight * sinR)).toInt()
+    }
 
     /** Height of the frame once rotation is applied. */
-    val height: Int = if (rotationDegrees == 90 || rotationDegrees == 270) srcWidth else srcHeight
+    val height: Int = if (rotationDegrees % 90 == 0) {
+        if (rotationDegrees % 180 == 0) srcHeight else srcWidth
+    } else {
+        (abs(srcWidth * sinR) + abs(srcHeight * cosR)).toInt()
+    }
+
+    private val cx = width / 2.0
+    private val cy = height / 2.0
+    private val scx = srcWidth / 2.0
+    private val scy = srcHeight / 2.0
 
     /**
      * Returns one horizontal row (length == [width]) of grayscale (0-255) values,
-     * in upright coordinates, where row 0 is the top of the image as the user sees it.
+     * in upright coordinates.
      */
     fun getRow(y: Int): IntArray {
         val out = IntArray(width)
-        // Optimization: Read bytes in native memory order when possible
-        when (rotationDegrees) {
+        
+        // Fast paths for standard rotations
+        when (rotationDegrees % 360) {
             0 -> {
                 val base = y * rowStride
-                if (pixelStride == 1) {
-                    for (x in 0 until width) out[x] = yBytes[base + x].toInt() and 0xFF
-                } else {
-                    for (x in 0 until width) out[x] = yBytes[base + x * pixelStride].toInt() and 0xFF
+                for (x in 0 until width) {
+                    out[x] = yBytes[base + x * pixelStride].toInt() and 0xFF
                 }
+                return out
             }
             90 -> {
-                // upright(x, y) = source(y, srcHeight - 1 - x)
                 val sx = y
                 val base = sx * pixelStride
                 for (x in 0 until width) {
                     val sy = srcHeight - 1 - x
                     out[x] = yBytes[sy * rowStride + base].toInt() and 0xFF
                 }
+                return out
             }
             180 -> {
                 val sy = srcHeight - 1 - y
@@ -54,16 +72,22 @@ class LuminanceFrame(
                     val sx = srcWidth - 1 - x
                     out[x] = yBytes[base + sx * pixelStride].toInt() and 0xFF
                 }
+                return out
             }
             270 -> {
-                // upright(x, y) = source(srcWidth - 1 - y, x)
                 val sx = srcWidth - 1 - y
                 val base = sx * pixelStride
                 for (x in 0 until width) {
-                    out[x] = yBytes[x * rowStride + base].toInt() and 0xFF
+                    val sy = x
+                    out[x] = yBytes[sy * rowStride + base].toInt() and 0xFF
                 }
+                return out
             }
-            else -> throw IllegalArgumentException("Unsupported rotation: $rotationDegrees")
+        }
+
+        // Generic path for arbitrary rotation
+        for (x in 0 until width) {
+            out[x] = pixelAt(x, y)
         }
         return out
     }
@@ -71,50 +95,82 @@ class LuminanceFrame(
     /** Returns one vertical column (length == [height]) in upright coordinates. */
     fun getColumn(x: Int): IntArray {
         val out = IntArray(height)
-        for (y in 0 until height) {
-            // This is inefficient but clear; a better way is to inline the coordinate math
-            val pixel = when (rotationDegrees) {
-                0 -> yBytes[y * rowStride + x * pixelStride].toInt() and 0xFF
-                180 -> {
-                    val sy = srcHeight - 1 - y
-                    val sx = srcWidth - 1 - x
-                    yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+        
+        // Fast paths for standard rotations
+        when (rotationDegrees % 360) {
+            0 -> {
+                val xOffset = x * pixelStride
+                for (y in 0 until height) {
+                    out[y] = yBytes[y * rowStride + xOffset].toInt() and 0xFF
                 }
-                90 -> {
-                    val sy = srcHeight - 1 - x
-                    yBytes[sy * rowStride + y * pixelStride].toInt() and 0xFF
-                }
-                270 -> {
-                    val sx = srcWidth - 1 - y
-                    yBytes[x * rowStride + sx * pixelStride].toInt() and 0xFF
-                }
-                else -> 0
+                return out
             }
-            out[y] = pixel
+            90 -> {
+                val sy = srcHeight - 1 - x
+                val base = sy * rowStride
+                for (y in 0 until height) {
+                    val sx = y
+                    out[y] = yBytes[base + sx * pixelStride].toInt() and 0xFF
+                }
+                return out
+            }
+            180 -> {
+                val sx = srcWidth - 1 - x
+                val xOffset = sx * pixelStride
+                for (y in 0 until height) {
+                    val sy = srcHeight - 1 - y
+                    out[y] = yBytes[sy * rowStride + xOffset].toInt() and 0xFF
+                }
+                return out
+            }
+            270 -> {
+                val sy = x
+                val base = sy * rowStride
+                for (y in 0 until height) {
+                    val sx = srcWidth - 1 - y
+                    out[y] = yBytes[base + sx * pixelStride].toInt() and 0xFF
+                }
+                return out
+            }
+        }
+
+        // Generic path for arbitrary rotation
+        for (y in 0 until height) {
+            out[y] = pixelAt(x, y)
         }
         return out
     }
 
-    /** 
-     * Returns a diagonal row from top-left-ish to bottom-right-ish or vice versa.
-     * [slope] 1.0 = 45 degrees, -1.0 = -45 degrees.
+    /**
+     * Extracts a line of pixels from (x1, y1) to (x2, y2) in upright coordinates.
      */
-    fun getDiagonal(slope: Float): IntArray {
-        // Simplified: just scan the main diagonal for now to see if it helps
-        val length = minOf(width, height)
+    fun getLine(x1: Int, y1: Int, x2: Int, y2: Int): IntArray {
+        val dx = x2 - x1
+        val dy = y2 - y1
+        val length = sqrt((dx * dx + dy * dy).toDouble()).toInt()
         val out = IntArray(length)
+        
+        if (length == 0) return out
+        
         for (i in 0 until length) {
-            val y = if (slope > 0) i else height - 1 - i
-            
-            // upright(x, y) coordinate mapping:
-            out[i] = when (rotationDegrees) {
-                0 -> yBytes[y * rowStride + i * pixelStride].toInt() and 0xFF
-                180 -> yBytes[(srcHeight - 1 - y) * rowStride + (srcWidth - 1 - i) * pixelStride].toInt() and 0xFF
-                90 -> yBytes[(srcHeight - 1 - i) * rowStride + y * pixelStride].toInt() and 0xFF
-                270 -> yBytes[i * rowStride + (srcWidth - 1 - y) * pixelStride].toInt() and 0xFF
-                else -> 0
-            }
+            val t = i.toDouble() / length
+            val px = (x1 + t * dx).toInt()
+            val py = (y1 + t * dy).toInt()
+            out[i] = pixelAt(px, py)
         }
         return out
+    }
+
+    fun pixelAt(x: Int, y: Int): Int {
+        val dx = x - cx
+        val dy = y - cy
+        val sx = (dx * cosR + dy * sinR + scx).toInt()
+        val sy = (-dx * sinR + dy * cosR + scy).toInt()
+        
+        return if (sx in 0 until srcWidth && sy in 0 until srcHeight) {
+            yBytes[sy * rowStride + sx * pixelStride].toInt() and 0xFF
+        } else {
+            0
+        }
     }
 }

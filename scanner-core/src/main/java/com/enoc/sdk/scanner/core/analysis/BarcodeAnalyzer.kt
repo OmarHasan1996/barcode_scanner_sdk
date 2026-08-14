@@ -1,6 +1,5 @@
 package com.enoc.sdk.scanner.core.analysis
 
-import android.graphics.Rect
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -14,8 +13,8 @@ import com.enoc.sdk.scanner.core.model.BarcodeResult
 import com.enoc.sdk.scanner.core.utils.Logger
 
 /**
- * Optimized analyzer for high-resolution (e.g. 5MP) cameras.
- * Limits scanning to a specific Region of Interest (ROI) to maximize CPU efficiency.
+ * Optimized analyzer for high-resolution cameras.
+ * Uses intensive multi-pass binarization and targeted ROI scanning.
  */
 class BarcodeAnalyzer(
     formats: Set<BarcodeFormat>,
@@ -56,43 +55,34 @@ class BarcodeAnalyzer(
                 rotationDegrees = proxy.imageInfo.rotationDegrees
             )
 
-            // OPTIMIZATION: Scan ONLY the ROI (Region of Interest)
-            // Based on our UI: 90% width, 20% height
+            // Define ROI: 90% width, 20% height
             val roiHeight = (frame.height * 0.20).toInt()
             val roiWidth = (frame.width * 0.90).toInt()
-            
             val roiTop = (frame.height - roiHeight) / 2
             val roiBottom = roiTop + roiHeight
-            
             val roiLeft = (frame.width - roiWidth) / 2
             val roiRight = roiLeft + roiWidth
 
-            // Scan horizontal rows within the ROI
+            // 1. Horizontal Passes within ROI
             val step = (roiHeight / rowsPerFrame).coerceAtLeast(1)
             val middle = frame.height / 2
-            
             for (i in 0 until rowsPerFrame) {
                 if (hasScanned) return@use
-                
-                // Zig-zag out from middle, but stay within ROI
                 val offset = if (i % 2 == 0) i / 2 else -(i + 1) / 2
                 val y = middle + offset * step
-                
                 if (y in roiTop until roiBottom) {
-                    // Extract only the part of the row that is inside the ROI width
                     val fullRow = frame.getRow(y)
                     val roiRow = fullRow.copyOfRange(roiLeft, roiRight)
                     if (scanRow(roiRow, y, "H")) return@use
                 }
             }
 
-            // Vertical Pass: Focus on the center 30% of the ROI width
-            val colsToScan = 20
-            val verticalRoiWidth = (roiWidth * 0.3).toInt()
-            val vLeft = roiLeft + (roiWidth - verticalRoiWidth) / 2
-            val vRight = vLeft + verticalRoiWidth
-            
-            val colStep = (verticalRoiWidth / colsToScan).coerceAtLeast(1)
+            // 2. Vertical Passes (centered in ROI)
+            val colsToScan = 30
+            val vRoiWidth = (roiWidth * 0.4).toInt()
+            val vLeft = roiLeft + (roiWidth - vRoiWidth) / 2
+            val vRight = vLeft + vRoiWidth
+            val colStep = (vRoiWidth / colsToScan).coerceAtLeast(1)
             val colMiddle = frame.width / 2
             for (i in 0 until colsToScan) {
                 if (hasScanned) return@use
@@ -104,27 +94,46 @@ class BarcodeAnalyzer(
                     if (scanRow(roiCol, x, "V")) return@use
                 }
             }
+
+            // 3. Diagonal Passes (across the ROI rectangle)
+            if (!hasScanned) {
+                // Top-left to bottom-right of ROI
+                val diag1 = frame.getLine(roiLeft, roiTop, roiRight, roiBottom)
+                if (scanRow(diag1, 0, "D1")) return@use
+                
+                // Top-right to bottom-left of ROI
+                val diag2 = frame.getLine(roiRight, roiTop, roiLeft, roiBottom)
+                if (scanRow(diag2, 0, "D2")) return@use
+            }
         }
     }
 
     private fun scanRow(rawRow: IntArray, y: Int, orientation: String): Boolean {
-        // High-density optimization: If row is long, sub-sample it for initial passes
-        // to save CPU on 5MP high-res frames.
-        
-        // 1. Standard Balanced Passes
-        if (checkBinary(RowBinarizer.binarizeAdaptive(rawRow, t = 20), y, "$orientation-Adap20")) return true
-        if (checkBinary(RowBinarizer.binarizeAdaptive(rawRow, t = 10), y, "$orientation-Adap10")) return true
-
-        // 2. Specialized Screen Pass
-        if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "$orientation-Screen")) return true
-
-        // 3. Upsampled High-Density Passes (Crucial for 5MP sensors seeing small codes)
+        // High-Density Screen & Industrial Passes
         val upsampled = RowBinarizer.upsample(rawRow)
-        if (checkBinary(RowBinarizer.binarizeThin(upsampled), y, "$orientation-Up-Thin")) return true
-        if (checkBinary(RowBinarizer.binarizeAdaptive(upsampled, t = 15), y, "$orientation-Up-Adap15")) return true
+        if (checkBinary(RowBinarizer.close(RowBinarizer.binarizeThin(upsampled)), y, "$orientation-U-TC")) return true
+        if (checkBinary(RowBinarizer.dilate(RowBinarizer.binarizeAdaptive(upsampled, t = 30)), y, "$orientation-U-A30D")) return true
+        if (checkBinary(RowBinarizer.binarizeThin(RowBinarizer.sharpen(upsampled)), y, "$orientation-U-ST")) return true
 
-        // 4. Blooming/Blur Pass (For out-of-focus or low-light)
+        // Standard Adaptive Passes
+        if (checkBinary(RowBinarizer.binarizeAdaptive(rawRow, t = 20), y, "$orientation-A20")) return true
+        if (checkBinary(RowBinarizer.binarizeAdaptive(rawRow, t = 10), y, "$orientation-A10")) return true
+
+        // Specialized Passes
+        if (checkBinary(RowBinarizer.binarizeForScreens(rawRow), y, "$orientation-Scr")) return true
         if (checkBinary(RowBinarizer.binarizeThin(rawRow), y, "$orientation-Thin")) return true
+
+        // Robust Filtered Passes
+        val sharpened = RowBinarizer.sharpen(rawRow)
+        if (checkBinary(RowBinarizer.binarizeForScreens(sharpened), y, "$orientation-Sharp")) return true
+
+        val filtered5 = RowBinarizer.medianFilter5(rawRow)
+        if (checkBinary(RowBinarizer.binarizeThick(filtered5), y, "$orientation-T5")) return true
+
+        val filtered = RowBinarizer.medianFilter(rawRow)
+        if (checkBinary(RowBinarizer.binarizeHighDensity(filtered), y, "$orientation-HD")) return true
+
+        if (checkBinary(RowBinarizer.binarizeHighContrast(rawRow), y, "$orientation-XC")) return true
 
         return false
     }
