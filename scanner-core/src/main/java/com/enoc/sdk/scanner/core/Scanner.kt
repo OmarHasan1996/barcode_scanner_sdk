@@ -15,6 +15,7 @@ interface Scanner {
         const val SCANNER_RESOLUTION_WIDTH = "scanner_resolution_width"
         const val SCANNER_RESOLUTION_HEIGHT = "scanner_resolution_height"
         const val SCANNER_IS_LOG_ENABLE = "scanner_is_log_enable"
+        const val SCANNER_ZOOM_ENABLE = "scanner_zoom_enable"
 
         const val DECODE_MODE_ALL = 0
         const val DECODE_MODE_SINGLE = 1

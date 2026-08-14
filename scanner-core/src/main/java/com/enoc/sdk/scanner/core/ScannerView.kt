@@ -13,10 +13,12 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +26,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -125,6 +130,9 @@ private fun ScannerCameraPreview(
     val scanner = ScannerSdk.getScanner() as ScannerImpl
     val formats = scanner.getEnabledFormats()
     val config = scanner.getConfig()
+    
+    var cameraControl by remember { mutableStateOf<androidx.camera.core.CameraControl?>(null) }
+    var currentZoom by remember { mutableFloatStateOf(1f) }
 
     LaunchedEffect(lifecycleOwner, formats, config) {
         val cameraProvider = cameraProviderFuture.get()
@@ -176,19 +184,19 @@ private fun ScannerCameraPreview(
                 previewView.height.toFloat()
             )
             // The viewfinder is 90% wide and 20% high
-            val centerPoint = factory.createPoint(0.5f, 0.5f, 0.2f)
+            val centerPoint = factory.createPoint(0.5f, 0.5f, 0.3f)
             val action = FocusMeteringAction.Builder(centerPoint, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
                 .setAutoCancelDuration(1, TimeUnit.SECONDS)
                 .build()
 
             camera.cameraControl.startFocusAndMetering(action)
+            cameraControl = camera.cameraControl
 
             // Torch control
             val isTorchOn = config.getBoolean(Scanner.SCANNER_IS_TORCH_ON, false)
             camera.cameraControl.enableTorch(isTorchOn)
 
-            // Sub-zoom for better bar separation on 5MP sensors
-            camera.cameraControl.setZoomRatio(1.2f)
+            camera.cameraControl.setZoomRatio(currentZoom)
 
         } catch (e: Exception) {
             Logger.e("ScannerView", "Camera binding failed", e)
@@ -258,5 +266,46 @@ private fun ScannerCameraPreview(
                 )
             }
         }
+
+        if(config.getBoolean(Scanner.SCANNER_ZOOM_ENABLE, true)){
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 64.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        if (currentZoom > 1.0f) {
+                            currentZoom -= 0.2f
+                            cameraControl?.setZoomRatio(currentZoom)
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Zoom Out", tint = Color.White)
+                }
+
+                Text(
+                    text = "${"%.1f".format(currentZoom)}x",
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
+                IconButton(
+                    onClick = {
+                        if (currentZoom < 3f) {
+                            currentZoom += 0.2f
+                            cameraControl?.setZoomRatio(currentZoom)
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Zoom In", tint = Color.White)
+                }
+            }
+        }
+
     }
 }

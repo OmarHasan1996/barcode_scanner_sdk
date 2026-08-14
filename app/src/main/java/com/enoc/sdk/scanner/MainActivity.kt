@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 // ScannerView now handles permission internally
                                 ScannerView(
-//                                    onClose = { showScanner = false },
+                                    onClose = { showScanner = false },
                                     onBarcodeDetected = { result ->
                                         // Optional: Handle result here too
                                     }
