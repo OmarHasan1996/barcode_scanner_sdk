@@ -56,6 +56,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.enoc.sdk.scanner.core.analysis.BarcodeAnalyzer
+import com.enoc.sdk.scanner.core.analysis.VehiclePlateAnalyzer
+import com.enoc.sdk.scanner.core.model.BarcodeFormat
 import com.enoc.sdk.scanner.core.model.BarcodeResult
 import com.enoc.sdk.scanner.core.utils.Logger
 import java.util.concurrent.Executors
@@ -135,14 +137,14 @@ private fun ScannerCameraPreview(
     var currentZoom by remember { mutableFloatStateOf(1f) }
 
     LaunchedEffect(lifecycleOwner, formats, config) {
+        val resWidth = config.getInt(Scanner.SCANNER_RESOLUTION_WIDTH, 1280)
+        val resHeight = config.getInt(Scanner.SCANNER_RESOLUTION_HEIGHT, 720)
+        Logger.i("[STEP 1 - CAMERA INIT] Binding CameraX lifecycle with formats=$formats, targetResolution=${resWidth}x${resHeight}")
+
         val cameraProvider = cameraProviderFuture.get()
         val preview = Preview.Builder().build().also {
             it.surfaceProvider = previewView.surfaceProvider
         }
-
-        // Optimize resolution for high-res 5MP cameras
-        val resWidth = config.getInt(Scanner.SCANNER_RESOLUTION_WIDTH, 1280)
-        val resHeight = config.getInt(Scanner.SCANNER_RESOLUTION_HEIGHT, 720)
 
         val resolutionSelector = ResolutionSelector.Builder()
             .setResolutionStrategy(
@@ -159,10 +161,19 @@ private fun ScannerCameraPreview(
             .build()
             .also {
                 val continueScan = config.getBoolean(Scanner.SCANNER_CONTINUE_SCAN, false)
-                it.setAnalyzer(cameraExecutor, BarcodeAnalyzer(formats, continueScan) { result ->
-                    scanner.dispatchResult(Scanner.SCANNER_SUCCESS, result.text)
-                    currentOnBarcodeDetected(result)
-                })
+                val isPlateScanning = formats.contains(BarcodeFormat.VEHICLE_PLATE)
+                val analyzer: ImageAnalysis.Analyzer = if (isPlateScanning) {
+                    VehiclePlateAnalyzer(continueScan) { result ->
+                        scanner.dispatchResult(Scanner.SCANNER_SUCCESS, result.text)
+                        currentOnBarcodeDetected(result)
+                    }
+                } else {
+                    BarcodeAnalyzer(formats, continueScan) { result ->
+                        scanner.dispatchResult(Scanner.SCANNER_SUCCESS, result.text)
+                        currentOnBarcodeDetected(result)
+                    }
+                }
+                it.setAnalyzer(cameraExecutor, analyzer)
             }
 
         val isBackCamera = config.getBoolean(Scanner.SCANNER_IS_BACK_CAMERA, true)
@@ -199,7 +210,7 @@ private fun ScannerCameraPreview(
             camera.cameraControl.setZoomRatio(currentZoom)
 
         } catch (e: Exception) {
-            Logger.e("ScannerView", "Camera binding failed", e)
+            Logger.e("Camera binding failed", e)
         }
     }
 

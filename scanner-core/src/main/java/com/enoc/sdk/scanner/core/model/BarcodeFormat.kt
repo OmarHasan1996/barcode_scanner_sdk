@@ -6,5 +6,6 @@ package com.enoc.sdk.scanner.core.model
 enum class BarcodeFormat {
     EAN_13,
     UPC_A,
-    CODE_128
+    CODE_128,
+    VEHICLE_PLATE
 }

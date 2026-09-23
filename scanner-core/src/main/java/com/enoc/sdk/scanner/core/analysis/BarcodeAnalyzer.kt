@@ -29,7 +29,7 @@ class BarcodeAnalyzer(
     private var hasScanned = false
 
     fun reset() {
-        Logger.d("BarcodeAnalyzer", "Scanner reset")
+        Logger.d("Scanner reset")
         hasScanned = false
     }
 
@@ -141,7 +141,7 @@ class BarcodeAnalyzer(
     private fun checkBinary(binary: BooleanArray, y: Int, label: String): Boolean {
         val runs = RunLengthReader.toRuns(RowBinarizer.deSpeckle(binary), label)
         decoder.decode(runs)?.let { result ->
-            Logger.i("BarcodeAnalyzer", "SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
+            Logger.i("SUCCESS ($label): Decoded ${result.format} '${result.text}' at row $y")
             if (!continueScan) {
                 hasScanned = true
             }

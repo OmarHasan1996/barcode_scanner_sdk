@@ -33,7 +33,7 @@ interface Scanner {
     }
 
     enum class CodeType {
-        CODE128, EAN13, UPCA
+        CODE128, EAN13, UPCA, PLATE
     }
 
     val scanLibVersion: String
