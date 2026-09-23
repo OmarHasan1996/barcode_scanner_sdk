@@ -62,7 +62,7 @@ class ScannerImpl : Scanner {
     override fun safeGetVersion(): String = scanLibVersion
 
     override fun startScan(timeoutSecond: Int, listener: OnScanListener) {
-        Logger.i("ENOC_PLATE_DEBUG", "[STEP 1 - START SCAN] Scanner session starting with enabled formats: $enabledFormats")
+        Logger.i("[STEP 1 - START SCAN] Scanner session starting with enabled formats: $enabledFormats")
         // Validate parameters
         if (timeoutSecond <= 0) {
             listener.onScanResult(Scanner.SCANNER_PARAM_INVALID, "Timeout should be more than zero".toByteArray())

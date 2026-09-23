@@ -24,10 +24,6 @@ class VehiclePlateAnalyzer(
     private val onResult: (BarcodeResult) -> Unit
 ) : ImageAnalysis.Analyzer {
 
-    companion object {
-        private const val TAG = "ENOC_PLATE_DEBUG"
-    }
-
     private val vehiclePlateDecoder = VehiclePlateDecoder()
 
     // On-device ML Kit Text Recognizer for fast 2D plate detection
@@ -45,7 +41,7 @@ class VehiclePlateAnalyzer(
     private var hasScanned = false
 
     fun reset() {
-        Logger.d(TAG, "[ANALYZER RESET] VehiclePlateAnalyzer reset")
+        Logger.d("[ANALYZER RESET] VehiclePlateAnalyzer reset")
         hasScanned = false
         isMlKitProcessing.set(false)
         frameCounter.set(0)
@@ -63,7 +59,7 @@ class VehiclePlateAnalyzer(
         val frameNum = frameCounter.incrementAndGet()
 
         if (isMlKitProcessing.get()) {
-            Logger.d(TAG, "[STEP 2 - FRAME SKIPPED] Frame #$frameNum skipped (ML Kit is busy processing previous frame)")
+            Logger.d("[STEP 2 - FRAME SKIPPED] Frame #$frameNum skipped (ML Kit is busy processing previous frame)")
             imageProxy.close()
             return
         }
@@ -89,18 +85,18 @@ class VehiclePlateAnalyzer(
         val roiBottom = roiTop + roiHeight
         val viewfinderRect = Rect(roiLeft, roiTop, roiRight, roiBottom)
 
-        Logger.d(TAG, "[STEP 2 - FRAME CAPTURED] Frame #$frameNum captured (${mediaImage.width}x${mediaImage.height}, rotation=$rotationDegrees°, ROI: ${viewfinderRect.toShortString()})")
+        Logger.d("[STEP 2 - FRAME CAPTURED] Frame #$frameNum captured (${mediaImage.width}x${mediaImage.height}, rotation=$rotationDegrees°, ROI: ${viewfinderRect.toShortString()})")
 
         val inputImage = InputImage.fromMediaImage(mediaImage, rotationDegrees)
-        Logger.d(TAG, "[STEP 3 - MLKIT DISPATCH] Dispatching Frame #$frameNum to ML Kit Text Recognizer")
+        Logger.d("[STEP 3 - MLKIT DISPATCH] Dispatching Frame #$frameNum to ML Kit Text Recognizer")
 
         textRecognizer.process(inputImage)
             .addOnSuccessListener { visionText ->
                 val rawText = visionText.text
                 if (rawText.isBlank()) {
-                    Logger.d(TAG, "[STEP 4 - OCR OUTPUT] Frame #$frameNum: ML Kit detected NO text")
+                    Logger.d("[STEP 4 - OCR OUTPUT] Frame #$frameNum: ML Kit detected NO text")
                 } else {
-                    Logger.i(TAG, "[STEP 4 - OCR OUTPUT] Frame #$frameNum: ML Kit raw output: \"${rawText.replace("\n", " | ")}\"")
+                    Logger.i("[STEP 4 - OCR OUTPUT] Frame #$frameNum: ML Kit raw output: \"${rawText.replace("\n", " | ")}\"")
                 }
 
                 if (!hasScanned && rawText.isNotBlank()) {
@@ -108,7 +104,7 @@ class VehiclePlateAnalyzer(
                     if (candidate != null) {
                         val verifiedPlate = verifyCandidate(candidate)
                         if (verifiedPlate != null) {
-                            Logger.i(TAG, "[STEP 7 - RESULT DISPATCH] Frame #$frameNum SUCCESS: Vehicle plate detected: \"$verifiedPlate\"")
+                            Logger.i("[STEP 7 - RESULT DISPATCH] Frame #$frameNum SUCCESS: Vehicle plate detected: \"$verifiedPlate\"")
                             if (!continueScan) {
                                 hasScanned = true
                             }
@@ -122,7 +118,7 @@ class VehiclePlateAnalyzer(
                 }
             }
             .addOnFailureListener { e ->
-                Logger.e(TAG, "[STEP 4 - OCR ERROR] Frame #$frameNum ML Kit failure: ${e.message}", e)
+                Logger.e("[STEP 4 - OCR ERROR] Frame #$frameNum ML Kit failure: ${e.message}", e)
             }
             .addOnCompleteListener {
                 isMlKitProcessing.set(false)
@@ -140,7 +136,7 @@ class VehiclePlateAnalyzer(
         if (candidate.plateNumber == lastCandidatePlate) {
             candidateMatchCount++
             if (candidateMatchCount >= 1) {
-                Logger.i(TAG, "[STEP 6 - VERIFIED] Low confidence candidate \"${candidate.plateNumber}\" confirmed across consecutive frames")
+                Logger.i("[STEP 6 - VERIFIED] Low confidence candidate \"${candidate.plateNumber}\" confirmed across consecutive frames")
                 lastCandidatePlate = null
                 candidateMatchCount = 0
                 return candidate.plateNumber
@@ -148,7 +144,7 @@ class VehiclePlateAnalyzer(
         } else {
             lastCandidatePlate = candidate.plateNumber
             candidateMatchCount = 0
-            Logger.d(TAG, "[STEP 6 - PENDING] Low confidence candidate \"${candidate.plateNumber}\" pending consecutive frame confirmation")
+            Logger.d("[STEP 6 - PENDING] Low confidence candidate \"${candidate.plateNumber}\" pending consecutive frame confirmation")
         }
 
         return null

@@ -18,8 +18,6 @@ data class PlateCandidate(
 class VehiclePlateDecoder : Decoder {
 
     companion object {
-        private const val TAG = "ENOC_PLATE_DEBUG"
-
         // Common non-plate text and noise words to exclude from OCR matches
         private val NOISE_KEYWORDS = setOf(
             "PHONE", "TEL", "DATE", "TIME", "PRICE", "TOTAL", "WWW", "HTTP", "COM",
@@ -57,7 +55,7 @@ class VehiclePlateDecoder : Decoder {
                 // Filter out lines whose center is outside the viewfinder ROI box
                 if (roiRect != null && box != null) {
                     if (!roiRect.contains(box.centerX(), box.centerY())) {
-                        Logger.d(TAG, "[STEP 5 - OUTSIDE ROI] Filtered out text outside viewfinder: \"${line.text.trim()}\"")
+                        Logger.d("[STEP 5 - OUTSIDE ROI] Filtered out text outside viewfinder: \"${line.text.trim()}\"")
                         continue
                     }
                 }
@@ -100,12 +98,12 @@ class VehiclePlateDecoder : Decoder {
      */
     fun extractPlateCandidate(rawText: String): PlateCandidate? {
         if (rawText.isBlank()) {
-            Logger.d(TAG, "[STEP 5 - REJECT] Raw OCR text is blank")
+            Logger.d("[STEP 5 - REJECT] Raw OCR text is blank")
             return null
         }
 
         val lines = rawText.split("\n", "\r").asSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
-        Logger.d(TAG, "[STEP 5 - EVAL] Evaluating OCR raw text with ${lines.size} line(s): \"${rawText.replace("\n", " | ")}\"")
+        Logger.d("[STEP 5 - EVAL] Evaluating OCR raw text with ${lines.size} line(s): \"${rawText.replace("\n", " | ")}\"")
 
         val hasCityPrefix = VALID_PREFIXES.any { rawText.uppercase().contains(it) }
 
@@ -123,14 +121,14 @@ class VehiclePlateDecoder : Decoder {
         val multiLineMatch = parseElementsForCandidate(tokens, hasCityPrefix)
         if (multiLineMatch != null) return multiLineMatch
 
-        Logger.d(TAG, "[STEP 5 - NO MATCH] No valid vehicle plate sequence found in raw text")
+        Logger.d("[STEP 5 - NO MATCH] No valid vehicle plate sequence found in raw text")
         return null
     }
 
     private fun parseLineForCandidate(line: String): PlateCandidate? {
         val upperLine = line.uppercase()
         if (NOISE_KEYWORDS.any { upperLine.contains(it) }) {
-            Logger.d(TAG, "[STEP 5 - NOISE SKIPPED] Line contains noise keyword: \"$line\"")
+            Logger.d("[STEP 5 - NOISE SKIPPED] Line contains noise keyword: \"$line\"")
             return null
         }
 
@@ -146,10 +144,10 @@ class VehiclePlateDecoder : Decoder {
             if ((code !in NOISE_KEYWORDS) && (code !in VALID_PREFIXES) && (number.toIntOrNull() != null)) {
                 // Reject cursor noise combinations like "I-1" unless city prefix is explicitly present
                 if (code in NOISE_SINGLE_LETTER_CODES && number.length == 1 && !hasCityPrefix) {
-                    Logger.d(TAG, "[STEP 5 - NOISE REJECT] Rejected single-letter noise combination: \"$code-$number\"")
+                    Logger.d("[STEP 5 - NOISE REJECT] Rejected single-letter noise combination: \"$code-$number\"")
                 } else {
                     val plate = "$code-$number"
-                    Logger.i(TAG, "[STEP 6 - PLATE DETECTED] Matched Code+Number pattern (High Confidence): \"$plate\" (line: \"$line\")")
+                    Logger.i("[STEP 6 - PLATE DETECTED] Matched Code+Number pattern (High Confidence): \"$plate\" (line: \"$line\")")
                     return PlateCandidate(plateNumber = plate, isHighConfidence = true)
                 }
             }
@@ -163,7 +161,7 @@ class VehiclePlateDecoder : Decoder {
             val numStr = match.groupValues[1]
             val isStandalone = (line.length <= 15) || (!line.contains(Regex("""\d{6,}""")))
             if (isStandalone && numStr.toIntOrNull() != null) {
-                Logger.i(TAG, "[STEP 6 - PLATE DETECTED] Matched standalone sequence (Low Confidence): \"$numStr\" (line: \"$line\")")
+                Logger.i("[STEP 6 - PLATE DETECTED] Matched standalone sequence (Low Confidence): \"$numStr\" (line: \"$line\")")
                 return PlateCandidate(plateNumber = numStr, isHighConfidence = false)
             }
         }
@@ -195,14 +193,14 @@ class VehiclePlateDecoder : Decoder {
             if (codeToken != null && numberToken != null) {
                 // Reject cursor noise combinations like "I-1" or "O-1" unless city prefix is present
                 if (codeToken in NOISE_SINGLE_LETTER_CODES && numberToken.length == 1 && !hasCityPrefix) {
-                    Logger.d(TAG, "[STEP 5 - NOISE REJECT] Rejected single-letter noise combination: \"$codeToken-$numberToken\"")
+                    Logger.d("[STEP 5 - NOISE REJECT] Rejected single-letter noise combination: \"$codeToken-$numberToken\"")
                     codeToken = null
                     numberToken = null
                     continue
                 }
 
                 val plate = "$codeToken-$numberToken"
-                Logger.i(TAG, "[STEP 6 - PLATE DETECTED] Matched combined tokens (High Confidence): \"$plate\"")
+                Logger.i("[STEP 6 - PLATE DETECTED] Matched combined tokens (High Confidence): \"$plate\"")
                 return PlateCandidate(plateNumber = plate, isHighConfidence = true)
             }
         }

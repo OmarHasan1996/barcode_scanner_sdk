@@ -5,31 +5,33 @@ import android.util.Log
 internal object Logger {
     var isLogEnabled: Boolean = true
 
-    fun d(tag: String, message: String) {
+    const val TAG = "ENOC_SCANNER_SDK"
+
+    fun d(message: String) {
         if (isLogEnabled) {
-            try { Log.d(tag, message) } catch (_: Throwable) {}
+            try { Log.d(TAG, message) } catch (_: Throwable) {}
         }
     }
 
-    fun i(tag: String, message: String) {
+    fun i(message: String) {
         if (isLogEnabled) {
-            try { Log.i(tag, message) } catch (_: Throwable) {}
+            try { Log.i(TAG, message) } catch (_: Throwable) {}
         }
     }
 
-    fun w(tag: String, message: String) {
+    fun w(message: String) {
         if (isLogEnabled) {
-            try { Log.w(tag, message) } catch (_: Throwable) {}
+            try { Log.w(TAG, message) } catch (_: Throwable) {}
         }
     }
 
-    fun e(tag: String, message: String, throwable: Throwable? = null) {
+    fun e(message: String, throwable: Throwable? = null) {
         if (isLogEnabled) {
             try {
                 if (throwable != null) {
-                    Log.e(tag, message, throwable)
+                    Log.e(TAG, message, throwable)
                 } else {
-                    Log.e(tag, message)
+                    Log.e(TAG, message)
                 }
             } catch (_: Throwable) {}
         }

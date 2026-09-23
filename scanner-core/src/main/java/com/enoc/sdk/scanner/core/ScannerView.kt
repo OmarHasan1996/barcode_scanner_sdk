@@ -139,7 +139,7 @@ private fun ScannerCameraPreview(
     LaunchedEffect(lifecycleOwner, formats, config) {
         val resWidth = config.getInt(Scanner.SCANNER_RESOLUTION_WIDTH, 1280)
         val resHeight = config.getInt(Scanner.SCANNER_RESOLUTION_HEIGHT, 720)
-        Logger.i("ENOC_PLATE_DEBUG", "[STEP 1 - CAMERA INIT] Binding CameraX lifecycle with formats=$formats, targetResolution=${resWidth}x${resHeight}")
+        Logger.i("[STEP 1 - CAMERA INIT] Binding CameraX lifecycle with formats=$formats, targetResolution=${resWidth}x${resHeight}")
 
         val cameraProvider = cameraProviderFuture.get()
         val preview = Preview.Builder().build().also {
@@ -210,7 +210,7 @@ private fun ScannerCameraPreview(
             camera.cameraControl.setZoomRatio(currentZoom)
 
         } catch (e: Exception) {
-            Logger.e("ScannerView", "Camera binding failed", e)
+            Logger.e("Camera binding failed", e)
         }
     }
 
