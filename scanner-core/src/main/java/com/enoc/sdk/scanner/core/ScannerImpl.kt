@@ -7,6 +7,9 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import com.enoc.sdk.scanner.core.model.BarcodeFormat
 import com.enoc.sdk.scanner.core.utils.Logger
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.concurrent.Executors
 
 class ScannerImpl : Scanner {
     private var config = Bundle()
@@ -22,6 +25,12 @@ class ScannerImpl : Scanner {
     override fun initScanner(config: Bundle) {
         this.config = config
         applyLoggingConfig()
+        // Pre-warm ML Kit text recognition client on background thread
+        Executors.newSingleThreadExecutor().execute {
+            try {
+                TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+            } catch (_: Exception) {}
+        }
     }
 
     override fun setConfiguration(config: Bundle) {
@@ -46,12 +55,14 @@ class ScannerImpl : Scanner {
             Scanner.CodeType.CODE128 -> BarcodeFormat.CODE_128
             Scanner.CodeType.EAN13 -> BarcodeFormat.EAN_13
             Scanner.CodeType.UPCA -> BarcodeFormat.UPC_A
+            Scanner.CodeType.PLATE -> BarcodeFormat.VEHICLE_PLATE
         })
     }
 
     override fun safeGetVersion(): String = scanLibVersion
 
     override fun startScan(timeoutSecond: Int, listener: OnScanListener) {
+        Logger.i("ENOC_PLATE_DEBUG", "[STEP 1 - START SCAN] Scanner session starting with enabled formats: $enabledFormats")
         // Validate parameters
         if (timeoutSecond <= 0) {
             listener.onScanResult(Scanner.SCANNER_PARAM_INVALID, "Timeout should be more than zero".toByteArray())

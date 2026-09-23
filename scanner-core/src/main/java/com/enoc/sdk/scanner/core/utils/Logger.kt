@@ -6,24 +6,32 @@ internal object Logger {
     var isLogEnabled: Boolean = true
 
     fun d(tag: String, message: String) {
-        if (isLogEnabled) Log.d(tag, message)
+        if (isLogEnabled) {
+            try { Log.d(tag, message) } catch (_: Throwable) {}
+        }
     }
 
     fun i(tag: String, message: String) {
-        if (isLogEnabled) Log.i(tag, message)
+        if (isLogEnabled) {
+            try { Log.i(tag, message) } catch (_: Throwable) {}
+        }
     }
 
     fun w(tag: String, message: String) {
-        if (isLogEnabled) Log.w(tag, message)
+        if (isLogEnabled) {
+            try { Log.w(tag, message) } catch (_: Throwable) {}
+        }
     }
 
     fun e(tag: String, message: String, throwable: Throwable? = null) {
         if (isLogEnabled) {
-            if (throwable != null) {
-                Log.e(tag, message, throwable)
-            } else {
-                Log.e(tag, message)
-            }
+            try {
+                if (throwable != null) {
+                    Log.e(tag, message, throwable)
+                } else {
+                    Log.e(tag, message)
+                }
+            } catch (_: Throwable) {}
         }
     }
 }

@@ -14,6 +14,10 @@ android {
         consumerProguardFiles("proguard-rules.pro")
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -49,6 +53,9 @@ dependencies {
     api(libs.androidx.camera.camera2)
     api(libs.androidx.camera.lifecycle)
     api(libs.androidx.camera.view)
+
+    // ML Kit Text Recognition for License Plate OCR
+    implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
